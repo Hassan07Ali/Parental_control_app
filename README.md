@@ -1,3 +1,4 @@
+
 # 🛡️ SafeScreen - Flutter Parental Control App
 ## Iteration 1 Frontend - Complete Source Code
 
@@ -128,3 +129,5 @@ dependencies:
   geolocator: ^13.0.0           # Location services
   installed_apps: ^2.0.0        # App enumeration (Android)
 ```
+
+
