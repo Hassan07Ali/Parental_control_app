@@ -53,10 +53,6 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  // FIX: Helper that returns today's exact midnight in milliseconds.
-  // By computing midnight fresh on every call, the value automatically
-  // rolls over to the new day when the clock passes 00:00:00 — so the
-  // screen-time counter resets correctly each day without any extra logic.
   int _todayMidnightMs() {
     final now = DateTime.now();
     return DateTime(now.year, now.month, now.day).millisecondsSinceEpoch;

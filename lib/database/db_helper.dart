@@ -206,4 +206,71 @@ class DbHelper {
     );
     return results.map((m) => AppLimitEntry.fromMap(m)).toList();
   }
+
+  // ─── Parent Profile Updates ───────────────────────────────────────────────
+
+  /// Update parent display name.
+  Future<void> updateParentName(int parentId, String newName) async {
+    final db = await database;
+    await db.update('parents', {'name': newName.trim()},
+        where: 'id = ?', whereArgs: [parentId]);
+  }
+
+  /// Update parent email — checks for duplicates first.
+  /// Returns true on success, false if email already taken.
+  Future<bool> updateParentEmail(int parentId, String newEmail) async {
+    final db = await database;
+    final norm = newEmail.toLowerCase().trim();
+    final existing = await db.query('parents',
+        where: 'email = ? AND id != ?', whereArgs: [norm, parentId]);
+    if (existing.isNotEmpty) return false;
+    await db.update('parents', {'email': norm},
+        where: 'id = ?', whereArgs: [parentId]);
+    return true;
+  }
+
+  /// Update parent password — verifies old password first.
+  /// Returns true on success, false if old password is wrong.
+  Future<bool> updateParentPassword(
+      int parentId, String oldPassword, String newPassword) async {
+    final db = await database;
+    final check = await db.query('parents',
+        where: 'id = ? AND password = ?',
+        whereArgs: [parentId, hashPassword(oldPassword)]);
+    if (check.isEmpty) return false;
+    await db.update('parents', {'password': hashPassword(newPassword)},
+        where: 'id = ?', whereArgs: [parentId]);
+    return true;
+  }
+
+  // ─── Child Profile Updates ────────────────────────────────────────────────
+
+  /// Update child name, avatar, and age together.
+  Future<void> updateChildProfile(
+      int childId, String name, String avatarEmoji, int age) async {
+    final db = await database;
+    await db.update(
+      'children',
+      {'name': name.trim(), 'avatar_emoji': avatarEmoji, 'age': age},
+      where: 'id = ?',
+      whereArgs: [childId],
+    );
+  }
+
+  /// Update the child-facing PIN.
+  Future<void> updateChildPin(int childId, String newPin) async {
+    final db = await database;
+    await db.update('children', {'pin': newPin},
+        where: 'id = ?', whereArgs: [childId]);
+  }
+
+  /// Get a child's current PIN (for verification before changing).
+  Future<String?> getChildPin(int childId) async {
+    final db = await database;
+    final results = await db.query('children',
+        columns: ['pin'], where: 'id = ?', whereArgs: [childId]);
+    if (results.isEmpty) return null;
+    return results.first['pin'] as String?;
+  }
+
 }
