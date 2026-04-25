@@ -3,10 +3,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../theme/app_theme.dart';
 import '../widgets/common_widgets.dart';
 import '../models/app_models.dart';
-import '../models/user_models.dart';
 import '../database/db_helper.dart';
 import '../services/session_service.dart';
-import 'auth_screen.dart';
+import 'role_picker_screen.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Settings Screen — fully wired backend
@@ -510,7 +509,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               if (mounted) {
                 Navigator.of(context).pushAndRemoveUntil(
                   PageRouteBuilder(
-                    pageBuilder:        (_, __, ___) => const AuthScreen(),
+                    pageBuilder:        (_, __, ___) => const RolePickerScreen(),
                     transitionsBuilder: (_, anim, __, child) =>
                         FadeTransition(opacity: anim, child: child),
                     transitionDuration: const Duration(milliseconds: 400),
@@ -803,7 +802,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             fontWeight: FontWeight.w500))),
         Switch(
           value: value, onChanged: onChanged,
-          activeColor: AppTheme.accentCyan,
+          activeThumbColor: AppTheme.accentCyan,
           activeTrackColor: AppTheme.accentCyan.withOpacity(0.3),
           materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
         ),

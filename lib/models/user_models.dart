@@ -1,4 +1,5 @@
 /// Database model classes for the auth & multi-user system.
+library;
 
 class ParentUser {
   final int? id;

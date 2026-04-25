@@ -79,7 +79,7 @@ class _SignupScreenState extends State<SignupScreen> {
       final parentId = await DbHelper().registerParent(name, email, password);
 
       // Save session
-      await SessionService.saveSession(parentId);
+      await SessionService.saveParentSession(parentId);
 
       setState(() {
         _isLoading = false;

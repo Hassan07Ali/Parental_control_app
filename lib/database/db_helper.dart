@@ -273,4 +273,23 @@ class DbHelper {
     return results.first['pin'] as String?;
   }
 
+  /// Get ALL children across all parents (used on the child selector screen).
+  Future<List<ChildUser>> getAllChildren() async {
+    final db = await database;
+    final results = await db.query('children', orderBy: 'name ASC');
+    return results.map((m) => ChildUser.fromMap(m)).toList();
+  }
+
+  /// Verify a child's PIN. Returns the ChildUser on success, null on failure.
+  Future<ChildUser?> loginChildByPin(int childId, String pin) async {
+    final db = await database;
+    final results = await db.query(
+      'children',
+      where: 'id = ? AND pin = ?',
+      whereArgs: [childId, pin],
+    );
+    if (results.isEmpty) return null;
+    return ChildUser.fromMap(results.first);
+  }
+
 }

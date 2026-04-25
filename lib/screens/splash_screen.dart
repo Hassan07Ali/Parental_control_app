@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import '../services/session_service.dart';
-import 'auth_screen.dart';
-import 'main_shell.dart';
+import 'role_picker_screen.dart';
+import 'parent_shell.dart';
+import 'child_shell.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -35,30 +36,29 @@ class _SplashScreenState extends State<SplashScreen>
     // Wait for splash animation
     await Future.delayed(const Duration(seconds: 3));
 
-    final loggedIn = await SessionService.isLoggedIn();
+    // ── Role-aware routing ──
+    final role = await SessionService.getRole();
 
     if (mounted) {
-      if (loggedIn) {
-        // User has a session → go straight to MainShell (it loads data from DB)
-        Navigator.of(context).pushReplacement(
-          PageRouteBuilder(
-            pageBuilder: (_, __, ___) => const MainShell(),
-            transitionsBuilder: (_, anim, __, child) =>
-                FadeTransition(opacity: anim, child: child),
-            transitionDuration: const Duration(milliseconds: 600),
-          ),
-        );
+      Widget destination;
+
+      if (role == 'parent') {
+        destination = const ParentShell();
+      } else if (role == 'child') {
+        destination = const ChildShell();
       } else {
-        // No session → show auth screen
-        Navigator.of(context).pushReplacement(
-          PageRouteBuilder(
-            pageBuilder: (_, __, ___) => const AuthScreen(),
-            transitionsBuilder: (_, anim, __, child) =>
-                FadeTransition(opacity: anim, child: child),
-            transitionDuration: const Duration(milliseconds: 600),
-          ),
-        );
+        // No session → show role picker
+        destination = const RolePickerScreen();
       }
+
+      Navigator.of(context).pushReplacement(
+        PageRouteBuilder(
+          pageBuilder: (_, __, ___) => destination,
+          transitionsBuilder: (_, anim, __, child) =>
+              FadeTransition(opacity: anim, child: child),
+          transitionDuration: const Duration(milliseconds: 600),
+        ),
+      );
     }
   }
 

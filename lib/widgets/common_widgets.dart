@@ -294,7 +294,7 @@ class AppBottomNav extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: AppTheme.surfaceDark,
-        border: Border(
+        border: const Border(
             top: BorderSide(color: AppTheme.borderColor, width: 1)),
         boxShadow: [
           BoxShadow(

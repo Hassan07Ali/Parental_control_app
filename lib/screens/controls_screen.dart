@@ -310,7 +310,7 @@ class _ControlsScreenState extends State<ControlsScreen> {
         decoration: const BoxDecoration(gradient: AppGradients.backgroundGradient),
         child: SafeArea(
           child: _isLoading
-              ? Center(
+              ? const Center(
                   child: CircularProgressIndicator(color: AppTheme.accentCyan))
               : CustomScrollView(
                   slivers: [
@@ -562,7 +562,7 @@ class _RealAppLimitRow extends StatelessWidget {
             Switch(
               value: isEnabled,
               onChanged: onToggle,
-              activeColor: AppTheme.accentCyan,
+              activeThumbColor: AppTheme.accentCyan,
               activeTrackColor: AppTheme.accentCyan.withOpacity(0.3),
               inactiveThumbColor: AppTheme.textMuted,
               inactiveTrackColor: AppTheme.surfaceLight,

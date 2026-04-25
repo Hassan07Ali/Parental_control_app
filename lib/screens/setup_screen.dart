@@ -5,7 +5,7 @@ import '../models/app_models.dart';
 import '../models/user_models.dart';
 import '../database/db_helper.dart';
 import '../services/session_service.dart';
-import 'main_shell.dart';
+import 'parent_shell.dart';
 
 class SetupScreen extends StatefulWidget {
   final int parentId;
@@ -104,7 +104,7 @@ class _SetupScreenState extends State<SetupScreen> {
 
         Navigator.of(context).pushAndRemoveUntil(
           PageRouteBuilder(
-            pageBuilder: (_, __, ___) => const MainShell(),
+            pageBuilder: (_, __, ___) => const ParentShell(),
             transitionsBuilder: (_, anim, __, child) =>
                 FadeTransition(opacity: anim, child: child),
             transitionDuration: const Duration(milliseconds: 400),
@@ -272,7 +272,7 @@ class _SetupScreenState extends State<SetupScreen> {
                     children: [
                       Text('$_dailyLimitHours', style: const TextStyle(fontSize: 72, fontWeight: FontWeight.w800, color: AppTheme.accentCyan, fontFamily: 'Poppins')),
                       const Padding(padding: EdgeInsets.only(bottom: 12), child: Text(' hr  ', style: TextStyle(color: AppTheme.textSecondary, fontSize: 20))),
-                      Text('${_dailyLimitMinutes.toString().padLeft(2, '0')}', style: const TextStyle(fontSize: 72, fontWeight: FontWeight.w800, color: AppTheme.accentCyan, fontFamily: 'Poppins')),
+                      Text(_dailyLimitMinutes.toString().padLeft(2, '0'), style: const TextStyle(fontSize: 72, fontWeight: FontWeight.w800, color: AppTheme.accentCyan, fontFamily: 'Poppins')),
                       const Padding(padding: EdgeInsets.only(bottom: 12), child: Text(' min', style: TextStyle(color: AppTheme.textSecondary, fontSize: 20))),
                     ],
                   ),

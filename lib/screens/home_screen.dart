@@ -388,9 +388,9 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
 
             // Active Restrictions header
-            SliverToBoxAdapter(
+            const SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
+                padding: EdgeInsets.fromLTRB(24, 24, 24, 0),
                 child: SectionHeader(title: 'Active Restrictions'),
               ),
             ),

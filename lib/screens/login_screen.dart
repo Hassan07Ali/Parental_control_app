@@ -4,8 +4,7 @@ import '../widgets/common_widgets.dart';
 import '../database/db_helper.dart';
 import '../services/session_service.dart';
 import '../models/app_models.dart';
-import '../models/user_models.dart';
-import 'main_shell.dart';
+import 'parent_shell.dart';
 import 'setup_screen.dart';
 /// Email + password login form.
 class LoginScreen extends StatefulWidget {
@@ -55,7 +54,7 @@ class _LoginScreenState extends State<LoginScreen> {
       }
 
       // Save session
-      await SessionService.saveSession(parent.id!);
+      await SessionService.saveParentSession(parent.id!);
 
       // Load children
       final children = await DbHelper().getChildrenForParent(parent.id!);
@@ -110,7 +109,7 @@ class _LoginScreenState extends State<LoginScreen> {
         } else {
           Navigator.of(context).pushAndRemoveUntil(
             PageRouteBuilder(
-              pageBuilder: (_, __, ___) => const MainShell(),
+              pageBuilder: (_, __, ___) => const ParentShell(),
               transitionsBuilder: (_, anim, __, child) =>
                   FadeTransition(opacity: anim, child: child),
               transitionDuration: const Duration(milliseconds: 400),

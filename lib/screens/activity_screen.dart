@@ -165,7 +165,7 @@ class _ActivityScreenState extends State<ActivityScreen> {
       decoration: const BoxDecoration(gradient: AppGradients.backgroundGradient),
       child: SafeArea(
         child: _isLoading
-            ? Center(child: CircularProgressIndicator(color: AppTheme.accentCyan))
+            ? const Center(child: CircularProgressIndicator(color: AppTheme.accentCyan))
             : CustomScrollView(
                 slivers: [
 
@@ -218,8 +218,8 @@ class _ActivityScreenState extends State<ActivityScreen> {
                                     fontSize: 16, fontWeight: FontWeight.w700)),
                             const SizedBox(height: 8),
                             // Colour legend
-                            Wrap(spacing: 12, runSpacing: 4,
-                              children: const [
+                            const Wrap(spacing: 12, runSpacing: 4,
+                              children: [
                                 _LegendDot(color: AppTheme.accentOrange, label: 'Highest'),
                                 _LegendDot(color: AppTheme.accentGreen,  label: 'Lowest'),
                                 _LegendDot(color: AppTheme.accentCyan,   label: 'Today'),

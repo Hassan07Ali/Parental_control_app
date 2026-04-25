@@ -52,8 +52,8 @@ class _LocationScreenState extends State<LocationScreen> {
       );
       if (mounted) {
         setState(() {
-          _locationName = 'Lat: \${position.latitude.toStringAsFixed(4)}, Lng: \${position.longitude.toStringAsFixed(4)}';
-          _timeString = 'Live · Accurate to \${position.accuracy.toStringAsFixed(0)}m';
+          _locationName = 'Lat: ${position.latitude.toStringAsFixed(4)}, Lng: ${position.longitude.toStringAsFixed(4)}';
+          _timeString = 'Live · Accurate to ${position.accuracy.toStringAsFixed(0)}m';
         });
       }
     } catch (e) {
@@ -183,7 +183,7 @@ class _LocationScreenState extends State<LocationScreen> {
                                       color: AppTheme.accentCyan, size: 18),
                                 ),
                                 const SizedBox(width: 12),
-                                const Expanded(
+                                Expanded(
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
@@ -238,7 +238,7 @@ class _LocationScreenState extends State<LocationScreen> {
                             isSelected: true,
                           ),
                           const SizedBox(height: 10),
-                          _LocationChildCard(
+                          const _LocationChildCard(
                             name: 'Liam',
                             emoji: '👦',
                             location: 'Home',
