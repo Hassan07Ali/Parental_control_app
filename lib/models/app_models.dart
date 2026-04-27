@@ -250,6 +250,24 @@ class SampleData {
     ),
   ];
 
+  /// FIX 1.2: Safe accessor for the active child.
+  /// Returns children[0] if available, or a safe default fallback.
+  /// Prevents RangeError crashes throughout the app.
+  static ChildProfile get activeChild {
+    if (children.isNotEmpty) return children[0];
+    return _fallbackChild;
+  }
+
+  /// Fallback child used when the children list is empty.
+  static final ChildProfile _fallbackChild = ChildProfile(
+    name: 'Child',
+    avatarEmoji: '👧',
+    age: 8,
+    dailyLimitMinutes: 120,
+    usedMinutes: 0,
+    pin: '0000',
+  );
+
   static List<AppUsage> recentApps = [];
 
   // Weekly history fetched from real Android UsageStats

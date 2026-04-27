@@ -230,8 +230,8 @@ class _LocationScreenState extends State<LocationScreen> {
                       child: ListView(
                         children: [
                           _LocationChildCard(
-                            name: SampleData.children[0].name,
-                            emoji: SampleData.children[0].avatarEmoji,
+                            name: SampleData.activeChild.name,
+                            emoji: SampleData.activeChild.avatarEmoji,
                             location: _locationName,
                             time: _timeString,
                             color: AppTheme.accentCyan,

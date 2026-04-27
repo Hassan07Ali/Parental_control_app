@@ -12,7 +12,7 @@ class ChildProfileScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final child = SampleData.children[0];
+    final child = SampleData.activeChild;
 
     return Container(
       decoration:

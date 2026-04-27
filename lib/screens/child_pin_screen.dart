@@ -87,11 +87,11 @@ class _ChildPinScreenState extends State<ChildPinScreen>
       await SessionService.saveChildSession(result.id!);
 
       // Sync to in-memory SampleData
-      SampleData.children[0].name = result.name;
-      SampleData.children[0].avatarEmoji = result.avatarEmoji;
-      SampleData.children[0].age = result.age;
-      SampleData.children[0].dailyLimitMinutes = result.dailyLimitMins;
-      SampleData.children[0].rewardPoints = result.rewardPoints;
+      SampleData.activeChild.name = result.name;
+      SampleData.activeChild.avatarEmoji = result.avatarEmoji;
+      SampleData.activeChild.age = result.age;
+      SampleData.activeChild.dailyLimitMinutes = result.dailyLimitMins;
+      SampleData.activeChild.rewardPoints = result.rewardPoints;
 
       if (mounted) {
         Navigator.of(context).pushAndRemoveUntil(

@@ -47,7 +47,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final child = await SessionService.getActiveChild();
     if (child != null && mounted) {
       setState(() {
-        SampleData.children[0].rewardPoints = child.rewardPoints;
+        SampleData.activeChild.rewardPoints = child.rewardPoints;
         _hasLoadedPoints = true;
       });
     }
@@ -68,7 +68,7 @@ class _HomeScreenState extends State<HomeScreen> {
       );
       if (totalResult != null && mounted) {
         setState(() {
-          SampleData.children[0].usedMinutes = (totalResult as num).toInt();
+          SampleData.activeChild.usedMinutes = (totalResult as num).toInt();
         });
         await _checkAndAwardDailyPoints();
       }
@@ -128,7 +128,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _checkAndAwardDailyPoints() async {
-    final child   = SampleData.children[0];
+    final child   = SampleData.activeChild;
     final childId = await SessionService.getActiveChildId();
     if (childId == null) return;
     if (SampleData.recentApps.isEmpty) return;
@@ -186,7 +186,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final child  = SampleData.children[0];
+    final child  = SampleData.activeChild;
     final parent = SampleData.parentProfile;
     final pct    = child.usagePercentage;
     final progressColor = pct > 0.8

@@ -7,6 +7,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.graphics.Color
+import android.os.Build
 import android.os.Bundle
 import android.view.Gravity
 import android.widget.LinearLayout
@@ -61,7 +62,15 @@ class BlockActivity : ComponentActivity() {
         setContentView(layout)
 
         // Register receiver to close this screen when service says so
-        registerReceiver(closeReceiver, IntentFilter("com.example.safescreen.ACTION_CLOSE_BLOCK_SCREEN"))
+        // FIX 1.3: On Android 14+ (API 34), registerReceiver without an
+        // export flag throws SecurityException. Use RECEIVER_NOT_EXPORTED
+        // since this is an internal broadcast.
+        val filter = IntentFilter("com.example.safescreen.ACTION_CLOSE_BLOCK_SCREEN")
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(closeReceiver, filter, RECEIVER_NOT_EXPORTED)
+        } else {
+            registerReceiver(closeReceiver, filter)
+        }
 
         // Modern onBackPressed logic
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {

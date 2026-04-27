@@ -79,7 +79,8 @@ class _SetupScreenState extends State<SetupScreen> {
         final childName = _childNameController.text.isNotEmpty ? _childNameController.text : 'Emma';
         final childAge = int.tryParse(_childAgeController.text) ?? 8;
 
-        // Insert child into DB
+        // FIX 2.1: Hash the PIN before storing (consistent with db_helper)
+        final hashedPin = DbHelper.hashPassword(pinStr.isNotEmpty ? pinStr : '1234');
         final childUser = ChildUser(
           parentId: widget.parentId,
           name: childName,
@@ -87,7 +88,7 @@ class _SetupScreenState extends State<SetupScreen> {
           age: childAge,
           dailyLimitMins: totalGlobalLimitMinutes,
           rewardPoints: 0,
-          pin: pinStr.isNotEmpty ? pinStr : '1234',
+          pin: hashedPin,
         );
         final childId = await DbHelper().insertChild(childUser);
 
@@ -95,12 +96,12 @@ class _SetupScreenState extends State<SetupScreen> {
         await SessionService.saveActiveChild(childId);
 
         // Sync to in-memory SampleData for immediate use
-        SampleData.children[0].name = childName;
-        SampleData.children[0].age = childAge;
-        SampleData.children[0].avatarEmoji = _selectedChildEmoji;
-        SampleData.children[0].dailyLimitMinutes = totalGlobalLimitMinutes;
-        SampleData.children[0].usedMinutes = 0;
-        SampleData.children[0].rewardPoints = 0;
+        SampleData.activeChild.name = childName;
+        SampleData.activeChild.age = childAge;
+        SampleData.activeChild.avatarEmoji = _selectedChildEmoji;
+        SampleData.activeChild.dailyLimitMinutes = totalGlobalLimitMinutes;
+        SampleData.activeChild.usedMinutes = 0;
+        SampleData.activeChild.rewardPoints = 0;
 
         Navigator.of(context).pushAndRemoveUntil(
           PageRouteBuilder(

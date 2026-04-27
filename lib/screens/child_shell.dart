@@ -46,11 +46,11 @@ class _ChildShellState extends State<ChildShell> {
 
     final child = await DbHelper().getChildById(childId);
     if (child != null) {
-      SampleData.children[0].name = child.name;
-      SampleData.children[0].avatarEmoji = child.avatarEmoji;
-      SampleData.children[0].age = child.age;
-      SampleData.children[0].dailyLimitMinutes = child.dailyLimitMins;
-      SampleData.children[0].rewardPoints = child.rewardPoints;
+      SampleData.activeChild.name = child.name;
+      SampleData.activeChild.avatarEmoji = child.avatarEmoji;
+      SampleData.activeChild.age = child.age;
+      SampleData.activeChild.dailyLimitMinutes = child.dailyLimitMins;
+      SampleData.activeChild.rewardPoints = child.rewardPoints;
 
       // Load app limits for this child
       final limits = await DbHelper().getAppLimits(child.id!);
@@ -178,7 +178,7 @@ class _VirtualPetScreenState extends State<_VirtualPetScreen>
     );
 
     // Happiness is tied to reward points
-    final points = SampleData.children[0].rewardPoints;
+    final points = SampleData.activeChild.rewardPoints;
     _happiness = (points.clamp(0, 100));
     _updateMood();
   }
@@ -202,9 +202,9 @@ class _VirtualPetScreenState extends State<_VirtualPetScreen>
   }
 
   void _feedPet() {
-    if (SampleData.children[0].rewardPoints >= 5) {
+    if (SampleData.activeChild.rewardPoints >= 5) {
       setState(() {
-        SampleData.children[0].rewardPoints -= 5;
+        SampleData.activeChild.rewardPoints -= 5;
         _happiness = (_happiness + 10).clamp(0, 100);
         _updateMood();
       });

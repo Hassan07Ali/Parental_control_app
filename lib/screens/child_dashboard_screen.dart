@@ -57,7 +57,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     final child = await SessionService.getActiveChild();
     if (child != null && mounted) {
       setState(() {
-        SampleData.children[0].rewardPoints = child.rewardPoints;
+        SampleData.activeChild.rewardPoints = child.rewardPoints;
         _hasLoadedPoints = true;
       });
     }
@@ -76,7 +76,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
       );
       if (totalResult != null && mounted) {
         setState(() {
-          SampleData.children[0].usedMinutes = (totalResult as num).toInt();
+          SampleData.activeChild.usedMinutes = (totalResult as num).toInt();
         });
       }
     } catch (e) {
@@ -116,7 +116,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
 
   @override
   Widget build(BuildContext context) {
-    final child = SampleData.children[0];
+    final child = SampleData.activeChild;
     final pct = child.usagePercentage;
     final progressColor = _getProgressColor(pct);
 

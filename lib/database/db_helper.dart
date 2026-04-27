@@ -258,13 +258,15 @@ class DbHelper {
   }
 
   /// Update the child-facing PIN.
+  /// FIX 2.1: Hash the PIN before storing (same SHA-256 as parent passwords).
   Future<void> updateChildPin(int childId, String newPin) async {
     final db = await database;
-    await db.update('children', {'pin': newPin},
+    await db.update('children', {'pin': hashPassword(newPin)},
         where: 'id = ?', whereArgs: [childId]);
   }
 
-  /// Get a child's current PIN (for verification before changing).
+  /// Get a child's current PIN hash (for verification before changing).
+  /// FIX 2.1: Returns the stored hash, not plain text.
   Future<String?> getChildPin(int childId) async {
     final db = await database;
     final results = await db.query('children',
@@ -281,12 +283,13 @@ class DbHelper {
   }
 
   /// Verify a child's PIN. Returns the ChildUser on success, null on failure.
+  /// FIX 2.1: Hash the input PIN before comparing against the stored hash.
   Future<ChildUser?> loginChildByPin(int childId, String pin) async {
     final db = await database;
     final results = await db.query(
       'children',
       where: 'id = ? AND pin = ?',
-      whereArgs: [childId, pin],
+      whereArgs: [childId, hashPassword(pin)],
     );
     if (results.isEmpty) return null;
     return ChildUser.fromMap(results.first);

@@ -197,12 +197,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
               if (childId == null) return;
 
               // Verify old PIN
-              final storedPin = await DbHelper().getChildPin(childId);
-              if (storedPin != oldCtrl.text) {
+              // FIX 2.4: Hash the input PIN before comparing against the
+              // stored hash (PINs are now hashed, same as passwords).
+              final storedPinHash = await DbHelper().getChildPin(childId);
+              if (storedPinHash != DbHelper.hashPassword(oldCtrl.text)) {
                 _error('Current PIN is incorrect');
                 return;
               }
               Navigator.pop(ctx);
+              // updateChildPin now hashes internally (FIX 2.1)
               await DbHelper().updateChildPin(childId, newCtrl.text);
               _success('PIN changed successfully');
             },
@@ -218,7 +221,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   // MANAGE CHILDREN dialog — edit child name, avatar, age, daily limit
   // ══════════════════════════════════════════════════════════════════════════
   void _showManageChildren() {
-    final child     = SampleData.children[0];
+    final child     = SampleData.activeChild;
     final nameCtrl  = TextEditingController(text: child.name);
     final ageCtrl   = TextEditingController(text: child.age.toString());
     final formKey   = GlobalKey<FormState>();
@@ -331,10 +334,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
                 // Update in-memory SampleData so rest of app sees changes immediately
                 setState(() {
-                  SampleData.children[0].name              = newName;
-                  SampleData.children[0].avatarEmoji       = selectedAvatar;
-                  SampleData.children[0].age               = newAge;
-                  SampleData.children[0].dailyLimitMinutes = newLimit;
+                  SampleData.activeChild.name              = newName;
+                  SampleData.activeChild.avatarEmoji       = selectedAvatar;
+                  SampleData.activeChild.age               = newAge;
+                  SampleData.activeChild.dailyLimitMinutes = newLimit;
                 });
 
                 _success('Child profile updated');
@@ -551,7 +554,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     final parent = SampleData.parentProfile;
-    final child  = SampleData.children[0];
+    final child  = SampleData.activeChild;
 
     return Container(
       decoration: const BoxDecoration(gradient: AppGradients.backgroundGradient),

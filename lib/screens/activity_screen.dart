@@ -108,14 +108,14 @@ class _ActivityScreenState extends State<ActivityScreen> {
         final mins = (result as num).toInt();
         setState(() {
           _todayUsedMinutes                    = mins;
-          SampleData.children[0].usedMinutes   = mins;
+          SampleData.activeChild.usedMinutes   = mins;
         });
       }
     } catch (e) {
       debugPrint('Today usage error: $e');
       // Fallback: use whatever HomeScreen already put in SampleData
       if (mounted) {
-        setState(() => _todayUsedMinutes = SampleData.children[0].usedMinutes);
+        setState(() => _todayUsedMinutes = SampleData.activeChild.usedMinutes);
       }
     }
   }
@@ -159,7 +159,7 @@ class _ActivityScreenState extends State<ActivityScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final child = SampleData.children[0];
+    final child = SampleData.activeChild;
 
     return Container(
       decoration: const BoxDecoration(gradient: AppGradients.backgroundGradient),

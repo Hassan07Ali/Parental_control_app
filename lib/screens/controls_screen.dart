@@ -135,7 +135,13 @@ class _ControlsScreenState extends State<ControlsScreen> {
     for (final pkg in _appToggles.keys) {
       if (_appToggles[pkg] == true) {
         activeLimits[pkg] = _appLimits[pkg] ?? 60;
-        final app = _installedApps.firstWhere((a) => a.packageName == pkg);
+        // FIX 3.2: Use safe lookup instead of firstWhere which throws
+        // StateError when the package is not found in the installed list.
+        final app = _installedApps.cast<AppInfo?>().firstWhere(
+              (a) => a?.packageName == pkg,
+              orElse: () => null,
+            );
+        if (app == null) continue; // skip packages that aren't installed
 
         SampleData.recentApps.add(AppUsage(
           appName:      app.name,
@@ -298,10 +304,10 @@ class _ControlsScreenState extends State<ControlsScreen> {
   Widget build(BuildContext context) {
     // Safe fallback — won't crash if SampleData.children is still default
     final childName  = SampleData.children.isNotEmpty
-        ? SampleData.children[0].name
+        ? SampleData.activeChild.name
         : 'Child';
     final childEmoji = SampleData.children.isNotEmpty
-        ? SampleData.children[0].avatarEmoji
+        ? SampleData.activeChild.avatarEmoji
         : '👧';
 
     return Scaffold(

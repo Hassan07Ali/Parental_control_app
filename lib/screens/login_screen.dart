@@ -65,11 +65,11 @@ class _LoginScreenState extends State<LoginScreen> {
       if (children.isNotEmpty) {
         final child = children.first;
         await SessionService.saveActiveChild(child.id!);
-        SampleData.children[0].name = child.name;
-        SampleData.children[0].avatarEmoji = child.avatarEmoji;
-        SampleData.children[0].age = child.age;
-        SampleData.children[0].dailyLimitMinutes = child.dailyLimitMins;
-        SampleData.children[0].rewardPoints = child.rewardPoints;
+        SampleData.activeChild.name = child.name;
+        SampleData.activeChild.avatarEmoji = child.avatarEmoji;
+        SampleData.activeChild.age = child.age;
+        SampleData.activeChild.dailyLimitMinutes = child.dailyLimitMins;
+        SampleData.activeChild.rewardPoints = child.rewardPoints;
 
         // Load app limits
         final limits = await DbHelper().getAppLimits(child.id!);
@@ -87,9 +87,7 @@ class _LoginScreenState extends State<LoginScreen> {
         }
       }
 
-      if (children.isNotEmpty) {
-        await SessionService.saveActiveChild(children.first.id!);
-      }
+      // FIX 1.7: Removed duplicate saveActiveChild call that was here
 
       setState(() {
         _isLoading = false;

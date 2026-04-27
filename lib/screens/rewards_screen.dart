@@ -35,13 +35,13 @@ class _RewardsScreenState extends State<RewardsScreen>
     final child = await SessionService.getActiveChild();
     if (child != null && mounted) {
       setState(() {
-        SampleData.children[0].rewardPoints = child.rewardPoints;
+        SampleData.activeChild.rewardPoints = child.rewardPoints;
       });
     }
   }
 
   Future<void> _redeemReward(RewardOption reward) async {
-    final child = SampleData.children[0];
+    final child = SampleData.activeChild;
     if (child.rewardPoints < reward.cost) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -100,7 +100,7 @@ class _RewardsScreenState extends State<RewardsScreen>
 
   @override
   Widget build(BuildContext context) {
-    final child = SampleData.children[0];
+    final child = SampleData.activeChild;
 
     return Container(
       decoration:
