@@ -88,6 +88,9 @@ class UsageService : Service() {
                 }
                 return
             }
+        } else if (globalLimitInMillis == 0L && isWarningScreenVisible) {
+            removeWarningOverlay()
+            isWarningScreenVisible = false
         }
 
         // 2. Enforce INDIVIDUAL app limits

@@ -3,6 +3,8 @@ import 'package:geolocator/geolocator.dart';
 import '../theme/app_theme.dart';
 import '../widgets/common_widgets.dart';
 import '../models/app_models.dart';
+import '../database/db_helper.dart';
+import '../services/session_service.dart';
 
 // ─── Location Screen ──────────────────────────────────────────────────────────
 class LocationScreen extends StatefulWidget {
@@ -15,11 +17,26 @@ class LocationScreen extends StatefulWidget {
 class _LocationScreenState extends State<LocationScreen> {
   String _locationName = 'Locating...';
   String _timeString = 'Waiting for GPS';
+  List<ChildUser> _children = [];
+  int _selectedChildIndex = 0;
   
   @override
   void initState() {
     super.initState();
     _getLocation();
+    _loadChildren();
+  }
+
+  Future<void> _loadChildren() async {
+    final parentId = await SessionService.getActiveParentId();
+    if (parentId != null) {
+      final children = await DbHelper().getChildrenForParent(parentId);
+      if (mounted) {
+        setState(() {
+          _children = children;
+        });
+      }
+    }
   }
 
   Future<void> _getLocation() async {
@@ -150,14 +167,14 @@ class _LocationScreenState extends State<LocationScreen> {
                           ),
                         ),
                         // Location pin
-                        const Center(
+                        Center(
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Text('📍', style: TextStyle(fontSize: 36)),
-                              SizedBox(height: 4),
-                              Text('Emma',
-                                  style: TextStyle(
+                              const Text('📍', style: TextStyle(fontSize: 36)),
+                              const SizedBox(height: 4),
+                              Text(_children.isNotEmpty ? _children[_selectedChildIndex].name : 'Locating...',
+                                  style: const TextStyle(
                                       color: AppTheme.textPrimary,
                                       fontWeight: FontWeight.w700,
                                       fontSize: 13)),
@@ -227,27 +244,33 @@ class _LocationScreenState extends State<LocationScreen> {
                             ?.copyWith(fontWeight: FontWeight.w700)),
                     const SizedBox(height: 12),
                     Expanded(
-                      child: ListView(
-                        children: [
-                          _LocationChildCard(
-                            name: SampleData.activeChild.name,
-                            emoji: SampleData.activeChild.avatarEmoji,
-                            location: _locationName,
-                            time: _timeString,
-                            color: AppTheme.accentCyan,
-                            isSelected: true,
-                          ),
-                          const SizedBox(height: 10),
-                          const _LocationChildCard(
-                            name: 'Liam',
-                            emoji: '👦',
-                            location: 'Home',
-                            time: 'Just now',
-                            color: AppTheme.accentGreen,
-                            isSelected: false,
-                          ),
-                        ],
-                      ),
+                      child: _children.isEmpty
+                          ? const Center(child: Text("No children found.", style: TextStyle(color: AppTheme.textMuted)))
+                          : ListView.builder(
+                              itemCount: _children.length,
+                              itemBuilder: (context, index) {
+                                final child = _children[index];
+                                final isSelected = index == _selectedChildIndex;
+                                return Padding(
+                                  padding: const EdgeInsets.only(bottom: 10),
+                                  child: GestureDetector(
+                                    onTap: () {
+                                      setState(() {
+                                        _selectedChildIndex = index;
+                                      });
+                                    },
+                                    child: _LocationChildCard(
+                                      name: child.name,
+                                      emoji: child.avatarEmoji,
+                                      location: isSelected ? _locationName : 'Home',
+                                      time: isSelected ? _timeString : 'Last seen 2 hours ago',
+                                      color: isSelected ? AppTheme.accentCyan : AppTheme.accentGreen,
+                                      isSelected: isSelected,
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
                     ),
                   ],
                 ),

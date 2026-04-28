@@ -25,16 +25,26 @@ class MainActivity : FlutterActivity() {
 
                 when (call.method) {
 
+                    "checkPermissions" -> {
+                        val hasOverlay = Settings.canDrawOverlays(this)
+                        val hasUsage = hasUsageStatsPermission()
+                        result.success(mapOf("overlay" to hasOverlay, "usage" to hasUsage))
+                    }
+                    "openOverlaySettings" -> {
+                        startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName")))
+                        result.success(null)
+                    }
+                    "openUsageSettings" -> {
+                        startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
+                        result.success(null)
+                    }
                     "configureUsageLimit" -> {
                         if (!Settings.canDrawOverlays(this)) {
-                            startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                                Uri.parse("package:$packageName")))
                             result.error("PERMISSION_DENIED",
                                 "Please grant Overlay Permission and try again.", null)
                             return@setMethodCallHandler
                         }
                         if (!hasUsageStatsPermission()) {
-                            startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
                             result.error("PERMISSION_DENIED",
                                 "Please grant Usage Access Permission and try again.", null)
                             return@setMethodCallHandler
@@ -53,6 +63,13 @@ class MainActivity : FlutterActivity() {
                         val globalLimit = call.argument<Int>("globalLimit") ?: 0
 
                         if (appLimits != null && appLimits.isNotEmpty()) {
+                            val prefs = getSharedPreferences("UsageLimits", Context.MODE_PRIVATE)
+                            prefs.edit().apply {
+                                putInt("globalLimit", globalLimit)
+                                putString("packages", appLimits.keys.joinToString(","))
+                                putString("limits", appLimits.values.joinToString(","))
+                                apply()
+                            }
                             val serviceIntent = Intent(this, UsageService::class.java).apply {
                                 putStringArrayListExtra("PACKAGES", ArrayList(appLimits.keys))
                                 putIntegerArrayListExtra("LIMITS",   ArrayList(appLimits.values))
@@ -61,14 +78,17 @@ class MainActivity : FlutterActivity() {
                             startService(serviceIntent)
                             result.success("Service Started")
                         } else {
+                            val prefs = getSharedPreferences("UsageLimits", Context.MODE_PRIVATE)
+                            prefs.edit().clear().apply()
                             stopService(Intent(this, UsageService::class.java))
                             result.success("Service Stopped")
                         }
                     }
 
                     "getDeviceTotalUsage" -> {
+                        val startTime = call.argument<Long>("startTime") ?: todayMidnightMs()
                         val usm     = getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
-                        val totalMs = calcUsageMs(usm, null, todayMidnightMs(), System.currentTimeMillis())
+                        val totalMs = calcUsageMs(usm, null, startTime, System.currentTimeMillis())
                         result.success((totalMs / (1000 * 60)).toInt())
                     }
 

@@ -3,6 +3,7 @@ import '../theme/app_theme.dart';
 import '../database/db_helper.dart';
 import '../services/session_service.dart';
 import '../models/app_models.dart';
+import 'role_picker_screen.dart';
 import 'child_dashboard_screen.dart';
 import 'rewards_screen.dart';
 import 'child_profile_screen.dart';
@@ -41,6 +42,16 @@ class _ChildShellState extends State<ChildShell> {
   }
 
   Future<void> _loadChildData() async {
+    final role = await SessionService.getRole();
+    if (role != 'child') {
+      if (mounted) {
+        Navigator.of(context).pushReplacement(
+          PageRouteBuilder(pageBuilder: (_, __, ___) => const RolePickerScreen()),
+        );
+      }
+      return;
+    }
+
     final childId = await SessionService.getActiveChildId();
     if (childId == null) return;
 

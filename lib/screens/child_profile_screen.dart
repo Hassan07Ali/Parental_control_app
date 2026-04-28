@@ -203,6 +203,7 @@ class ChildProfileScreen extends StatelessWidget {
                           onPressed: () async {
                             Navigator.pop(ctx);
                             await SessionService.clearSession();
+                            SampleData.reset();
                             if (context.mounted) {
                               Navigator.of(context).pushAndRemoveUntil(
                                 PageRouteBuilder(

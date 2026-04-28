@@ -509,6 +509,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onPressed: () async {
               Navigator.pop(ctx);
               await SessionService.clearSession();
+              SampleData.reset();
               if (mounted) {
                 Navigator.of(context).pushAndRemoveUntil(
                   PageRouteBuilder(

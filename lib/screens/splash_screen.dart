@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../theme/app_theme.dart';
 import '../services/session_service.dart';
 import 'role_picker_screen.dart';
 import 'parent_shell.dart';
 import 'child_shell.dart';
+import 'onboarding_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -36,13 +38,18 @@ class _SplashScreenState extends State<SplashScreen>
     // Wait for splash animation
     await Future.delayed(const Duration(seconds: 3));
 
+    final prefs = await SharedPreferences.getInstance();
+    final hasSeenOnboarding = prefs.getBool('has_seen_onboarding') ?? false;
+
     // ── Role-aware routing ──
     final role = await SessionService.getRole();
 
     if (mounted) {
       Widget destination;
 
-      if (role == 'parent') {
+      if (!hasSeenOnboarding) {
+        destination = const OnboardingScreen();
+      } else if (role == 'parent') {
         destination = const ParentShell();
       } else if (role == 'child') {
         destination = const ChildShell();

@@ -172,6 +172,18 @@ class _ControlsScreenState extends State<ControlsScreen> {
 
     // Start / update UsageService
     try {
+      final Map? perms = await platform.invokeMethod('checkPermissions');
+      if (perms != null) {
+        if (perms['overlay'] == false) {
+          _showPermissionDialog('Overlay Permission Required', 'SafeScreen needs permission to display over other apps so it can block them when the time limit is reached.', 'openOverlaySettings');
+          return;
+        }
+        if (perms['usage'] == false) {
+          _showPermissionDialog('Usage Access Required', 'SafeScreen needs permission to track app usage so it can accurately enforce the limits you set.', 'openUsageSettings');
+          return;
+        }
+      }
+
       final result = await platform.invokeMethod('configureUsageLimit', {
         'appLimits':   activeLimits,
         'globalLimit': globalLimit,
@@ -188,6 +200,31 @@ class _ControlsScreenState extends State<ControlsScreen> {
             backgroundColor: AppTheme.accentOrange));
       }
     }
+  }
+
+  void _showPermissionDialog(String title, String message, String methodName) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppTheme.surfaceCard,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text(title, style: const TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w700)),
+        content: Text(message, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 14)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel', style: TextStyle(color: AppTheme.textMuted)),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              platform.invokeMethod(methodName);
+            },
+            child: const Text('Open Settings', style: TextStyle(color: AppTheme.accentPurple, fontWeight: FontWeight.w700)),
+          ),
+        ],
+      ),
+    );
   }
 
   void _showRestrictedAppsDialog() {

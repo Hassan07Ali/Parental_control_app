@@ -270,6 +270,19 @@ class SampleData {
 
   static List<AppUsage> recentApps = [];
 
+  static void reset() {
+    parentProfile = ChildProfile(
+      name: 'James Mathew',
+      avatarEmoji: '👨',
+      age: 35,
+      dailyLimitMinutes: 180,
+      pin: '1234',
+    );
+    children.clear();
+    recentApps.clear();
+    weeklyHistory.clear();
+  }
+
   // Weekly history fetched from real Android UsageStats
   static List<DailyUsageEntry> weeklyHistory = [];
 
