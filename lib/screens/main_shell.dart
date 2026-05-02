@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 import 'parent_shell.dart';
 
 /// Alias so that `MainShell` references in legacy code resolve correctly.
-/// New code should import parent_shell.dart directly.
+
 class MainShell extends StatelessWidget {
   const MainShell({super.key});
 

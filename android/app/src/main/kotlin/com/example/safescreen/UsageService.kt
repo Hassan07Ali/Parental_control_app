@@ -71,6 +71,24 @@ class UsageService : Service() {
     // Main enforcement loop — runs every 2 seconds
     // ─────────────────────────────────────────────────────────────────────────
     private fun checkUsageAndEnforce() {
+
+        // ── PARENT MODE GUARD ─────────────────────────────────────────────────
+        // SharedPreferences key used by Flutter's shared_preferences plugin is
+        // prefixed with "flutter." — so session_role becomes flutter.session_role.
+        // If this device is in parent mode (or role is unknown), do nothing.
+        // This fixes the bug where the popup was appearing on the parent's phone.
+        val prefs = getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
+        val role  = prefs.getString("flutter.session_role", "parent") ?: "parent"
+        if (role != "child") {
+            // Make sure block screen is dismissed if somehow visible
+            if (isWarningScreenVisible) {
+                removeWarningOverlay()
+                isWarningScreenVisible = false
+            }
+            return  // ← parent phone: never block anything
+        }
+        // ── END GUARD ─────────────────────────────────────────────────────────
+
         val usm = getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
         val activePackage = getForegroundApp(usm) ?: return
 
@@ -80,7 +98,7 @@ class UsageService : Service() {
 
         // 1. Enforce GLOBAL limit
         if (globalLimitInMillis > 0) {
-            val totalMs = getTotalDailyUsageMs(usm)          // FIX: event-based
+            val totalMs = getTotalDailyUsageMs(usm)
             if (totalMs >= globalLimitInMillis && !isSystemApp) {
                 if (!isWarningScreenVisible) {
                     showWarningOverlay()
@@ -92,13 +110,9 @@ class UsageService : Service() {
 
         // 2. Enforce INDIVIDUAL app limits
         if (monitoredApps.containsKey(activePackage)) {
-            val limitMs = monitoredApps[activePackage]!!
-            // FIX: Use event-based calcUsageMs instead of queryUsageStats.
-            // queryUsageStats with INTERVAL_BEST on MIUI returns stale
-            // aggregated buckets that do not respect the startTime you pass,
-            // so the app usage appears higher than it really is and the
-            // popup fires before the limit is actually reached.
-            val appUsedMs = calcUsageMs(usm, activePackage, todayMidnightMs(), System.currentTimeMillis())
+            val limitMs   = monitoredApps[activePackage]!!
+            val appUsedMs = calcUsageMs(usm, activePackage,
+                todayMidnightMs(), System.currentTimeMillis())
 
             if (appUsedMs >= limitMs) {
                 if (!isWarningScreenVisible) {
@@ -119,24 +133,9 @@ class UsageService : Service() {
         }
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // FIX: Replaced old queryUsageStats version with event-based calculation.
-    // Same logic as MainActivity.calcUsageMs — sums only the ms that fall
-    // inside [todayMidnight, now] so MIUI cannot bleed previous-day data in.
-    // ─────────────────────────────────────────────────────────────────────────
     private fun getTotalDailyUsageMs(usm: UsageStatsManager): Long =
         calcUsageMs(usm, null, todayMidnightMs(), System.currentTimeMillis())
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // Event-based usage calculator — shared with getTotalDailyUsageMs
-    // and the individual-app check above.
-    //
-    // targetPkg == null  → sum ALL non-system packages (device total)
-    // targetPkg != null  → sum only that package
-    //
-    // Clamps every session to [startMs, endMs] so time that happened before
-    // midnight is never counted even if the resume event was before midnight.
-    // ─────────────────────────────────────────────────────────────────────────
     private fun calcUsageMs(
         usm: UsageStatsManager,
         targetPkg: String?,
@@ -167,7 +166,6 @@ class UsageService : Service() {
             }
         }
 
-        // App still in foreground — no PAUSED event yet, count up to now
         for ((pkg, resumeTime) in resumedAt) {
             if (targetPkg != null && pkg != targetPkg) continue
             val sessionStart = maxOf(resumeTime, startMs)
@@ -178,14 +176,10 @@ class UsageService : Service() {
         return totalMs
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // Gets the package name of the app currently in foreground by reading
-    // the last ACTIVITY_RESUMED event from the past hour.
-    // ─────────────────────────────────────────────────────────────────────────
     private fun getForegroundApp(usm: UsageStatsManager): String? {
-        val endTime    = System.currentTimeMillis()
+        val endTime     = System.currentTimeMillis()
         val usageEvents = usm.queryEvents(endTime - (1000 * 60 * 60), endTime)
-        val event = UsageEvents.Event()
+        val event       = UsageEvents.Event()
         var latestPackage: String? = null
         while (usageEvents.hasNextEvent()) {
             usageEvents.getNextEvent(event)
@@ -195,10 +189,6 @@ class UsageService : Service() {
         }
         return latestPackage
     }
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // Helpers
-    // ─────────────────────────────────────────────────────────────────────────
 
     private fun todayMidnightMs(): Long =
         Calendar.getInstance().apply {

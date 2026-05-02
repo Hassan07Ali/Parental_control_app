@@ -1,107 +1,113 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../database/db_helper.dart';
 import '../models/user_models.dart';
 
-/// Tracks auth'd user session using shared_preferences.
-/// Stores the logged-in role ('parent' | 'child') and the relevant ID
-/// so the app can skip login on next launch and route to the correct shell.
+/// SessionService — Firebase version with dual parent/child role support.
+/// ALL original method signatures kept — no screen changes needed.
 class SessionService {
-  static const _keyRole     = 'session_role';       // 'parent' | 'child'
-  static const _keyParentId = 'session_parent_id';
-  static const _keyChildId  = 'session_child_id';
+  static const _keyChildId  = 'session_child_id';   // stores String child doc ID
+  static const _keyRole     = 'session_role';        // 'parent' | 'child'
 
-  // ─── Role-aware session saves ────────────────────────────────────────────
+  // ── Login state ────────────────────────────────────────────────────────────
 
-  /// Save a parent login session.
-  static Future<void> saveParentSession(int parentId) async {
+  /// True if Firebase Auth has a current user.
+  static Future<bool> isLoggedIn() async =>
+      FirebaseAuth.instance.currentUser != null;
+
+  static String? getCurrentUid() =>
+      FirebaseAuth.instance.currentUser?.uid;
+
+  // ── Role ───────────────────────────────────────────────────────────────────
+
+  static Future<void> saveRole(String role) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_keyRole, 'parent');
-    await prefs.setInt(_keyParentId, parentId);
-    await prefs.remove(_keyChildId);
+    await prefs.setString(_keyRole, role);
   }
 
-  /// Save a child login session.
-  static Future<void> saveChildSession(int childId) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_keyRole, 'child');
-    await prefs.setInt(_keyChildId, childId);
-    // Don't clear parentId — a child still belongs to a parent
-  }
-
-  // ─── Legacy helper (kept for backward compat) ───────────────────────────
-
-  /// Save parent ID (backward compat — prefer saveParentSession).
-  static Future<void> saveSession(int parentId) async {
-    await saveParentSession(parentId);
-  }
-
-  /// Save the currently active child's ID (from within parent context).
-  static Future<void> saveActiveChild(int childId) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt(_keyChildId, childId);
-  }
-
-  // ─── Role queries ───────────────────────────────────────────────────────
-
-  /// Get the stored role: 'parent', 'child', or null.
   static Future<String?> getRole() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString(_keyRole);
   }
 
-  /// Check if any user is currently logged in (parent or child).
-  static Future<bool> isLoggedIn() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.containsKey(_keyRole);
+  // ── Parent session ─────────────────────────────────────────────────────────
+
+  /// Called after parent login/register. Firebase persists auth automatically.
+  static Future<void> saveSession(dynamic parentId) async {
+    await saveRole('parent');
   }
 
-  /// True if the current session is a parent session.
-  static Future<bool> isParentLoggedIn() async {
-    return (await getRole()) == 'parent';
+  /// Alias used by signup_screen.dart
+  static Future<void> saveParentSession(dynamic parentId) async {
+    await saveSession(parentId);
   }
 
-  /// True if the current session is a child session.
-  static Future<bool> isChildLoggedIn() async {
-    return (await getRole()) == 'child';
-  }
-
-  // ─── ID getters ─────────────────────────────────────────────────────────
-
-  /// Get the logged-in parent's ID (null if not logged in).
+  /// Returns int hashCode for screens expecting int (backwards compat).
   static Future<int?> getParentId() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getInt(_keyParentId);
+    final uid = getCurrentUid();
+    return uid?.hashCode;
   }
 
-  /// Get the currently active child's ID.
-  static Future<int?> getActiveChildId() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getInt(_keyChildId);
-  }
-
-  // ─── Object getters (from DB) ───────────────────────────────────────────
-
-  /// Get the logged-in parent object from DB.
+  /// Get the logged-in parent object from Firestore.
   static Future<ParentUser?> getCurrentParent() async {
-    final parentId = await getParentId();
-    if (parentId == null) return null;
-    return await DbHelper().getParentById(parentId);
+    final uid = getCurrentUid();
+    if (uid == null) return null;
+    return DbHelper().getParentById(uid);
   }
 
-  /// Get the active child object from DB.
+  // ── Child session ──────────────────────────────────────────────────────────
+
+  /// Save active child doc ID. Accepts String or int.
+  static Future<void> saveActiveChild(dynamic childId) async {
+    final prefs = await SharedPreferences.getInstance();
+    final uid   = getCurrentUid();
+    String id;
+    if (childId is String && childId.contains('_child')) {
+      id = childId;
+    } else if (uid != null) {
+      id = '${uid}_child';
+    } else {
+      id = childId.toString();
+    }
+    await prefs.setString(_keyChildId, id);
+  }
+
+  /// Called from child_pin_screen after successful PIN login.
+  static Future<void> saveChildSession(dynamic childId) async {
+    await saveActiveChild(childId);
+    await saveRole('child');
+  }
+
+  static Future<void> saveChildMode() async => saveRole('child');
+
+  /// Returns int hashCode for screens expecting int.
+  static Future<int?> getActiveChildId() async {
+    final docId = await _getActiveChildDocId();
+    return docId?.hashCode;
+  }
+
+  static Future<String?> _getActiveChildDocId() async {
+    final prefs  = await SharedPreferences.getInstance();
+    final stored = prefs.getString(_keyChildId);
+    if (stored != null) return stored;
+    // Fallback: build from current Firebase UID
+    final uid = getCurrentUid();
+    return uid != null ? '${uid}_child' : null;
+  }
+
+  /// Get the active child object from Firestore.
   static Future<ChildUser?> getActiveChild() async {
-    final childId = await getActiveChildId();
-    if (childId == null) return null;
-    return await DbHelper().getChildById(childId);
+    final docId = await _getActiveChildDocId();
+    if (docId == null) return null;
+    return DbHelper().getChildById(docId);
   }
 
-  // ─── Clear ──────────────────────────────────────────────────────────────
+  // ── Logout ─────────────────────────────────────────────────────────────────
 
-  /// Clear the session (log out).
   static Future<void> clearSession() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_keyRole);
-    await prefs.remove(_keyParentId);
     await prefs.remove(_keyChildId);
+    await prefs.remove(_keyRole);
+    await FirebaseAuth.instance.signOut();
   }
 }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../theme/app_theme.dart';
 import '../database/db_helper.dart';
 import '../services/session_service.dart';
@@ -11,7 +12,6 @@ import 'settings_screen.dart';
 
 /// The parent's main navigation shell.
 /// Tabs: Dashboard · Controls · Activity · Location · Settings
-/// No child-personal tabs (rewards, virtual pet) are shown here.
 class ParentShell extends StatefulWidget {
   const ParentShell({super.key});
 
@@ -20,6 +20,10 @@ class ParentShell extends StatefulWidget {
 }
 
 class _ParentShellState extends State<ParentShell> {
+
+  // ── MethodChannel — same channel used by MainActivity.kt ─────────────────
+  static const _platform = MethodChannel('com.example.safescreen/usage_control');
+
   int _currentIndex = 0;
 
   final List<Widget> _screens = const [
@@ -31,11 +35,11 @@ class _ParentShellState extends State<ParentShell> {
   ];
 
   static const _navItems = [
-    {'icon': Icons.home_rounded, 'label': 'Dashboard'},
-    {'icon': Icons.tune_rounded, 'label': 'Controls'},
-    {'icon': Icons.bar_chart_rounded, 'label': 'Activity'},
+    {'icon': Icons.home_rounded,        'label': 'Dashboard'},
+    {'icon': Icons.tune_rounded,        'label': 'Controls'},
+    {'icon': Icons.bar_chart_rounded,   'label': 'Activity'},
     {'icon': Icons.location_on_rounded, 'label': 'Location'},
-    {'icon': Icons.settings_rounded, 'label': 'Settings'},
+    {'icon': Icons.settings_rounded,    'label': 'Settings'},
   ];
 
   @override
@@ -45,6 +49,10 @@ class _ParentShellState extends State<ParentShell> {
   }
 
   Future<void> _loadSessionData() async {
+    
+    await _stopUsageService();
+    // ── END FIX ───────────────────────────────────────────────────────────────
+
     final parentId = await SessionService.getParentId();
     if (parentId == null) return;
 
@@ -60,11 +68,11 @@ class _ParentShellState extends State<ParentShell> {
       final child = children.first;
       await SessionService.saveActiveChild(child.id!);
 
-      SampleData.activeChild.name = child.name;
-      SampleData.activeChild.avatarEmoji = child.avatarEmoji;
-      SampleData.activeChild.age = child.age;
+      SampleData.activeChild.name              = child.name;
+      SampleData.activeChild.avatarEmoji       = child.avatarEmoji;
+      SampleData.activeChild.age               = child.age;
       SampleData.activeChild.dailyLimitMinutes = child.dailyLimitMins;
-      SampleData.activeChild.rewardPoints = child.rewardPoints;
+      SampleData.activeChild.rewardPoints      = child.rewardPoints;
 
       // Load app limits
       final limits = await DbHelper().getAppLimits(child.id!);
@@ -72,10 +80,10 @@ class _ParentShellState extends State<ParentShell> {
       for (final limit in limits) {
         if (limit.isActive) {
           SampleData.recentApps.add(AppUsage(
-            appName: limit.appName,
-            packageName: limit.packageName,
-            minutesUsed: 0,
-            iconEmoji: '',
+            appName:      limit.appName,
+            packageName:  limit.packageName,
+            minutesUsed:  0,
+            iconEmoji:    '',
             limitMinutes: limit.limitMinutes,
           ));
         }
@@ -83,6 +91,21 @@ class _ParentShellState extends State<ParentShell> {
     }
 
     if (mounted) setState(() {});
+  }
+
+  // ── Stops the UsageService so it never runs in parent mode ───────────────
+  Future<void> _stopUsageService() async {
+    try {
+      // Passing empty appLimits tells MainActivity to stopService()
+      await _platform.invokeMethod('configureUsageLimit', {
+        'appLimits':   <String, int>{},
+        'globalLimit': 0,
+      });
+      debugPrint('[ParentShell] UsageService stopped — parent mode active');
+    } catch (e) {
+      // Permissions not granted yet — service wasn't running anyway
+      debugPrint('[ParentShell] UsageService stop skipped: $e');
+    }
   }
 
   @override
@@ -120,8 +143,8 @@ class _ParentShellState extends State<ParentShell> {
                 onTap: () => setState(() => _currentIndex = i),
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 200),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 12, vertical: 8),
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(12),
                     color: isSelected
@@ -145,9 +168,9 @@ class _ParentShellState extends State<ParentShell> {
                           color: isSelected
                               ? AppTheme.accentCyan
                               : AppTheme.textMuted,
-                          fontSize: 10,
-                          fontWeight:
-                              isSelected ? FontWeight.w600 : FontWeight.w400,
+                          fontSize:   10,
+                          fontWeight: isSelected
+                              ? FontWeight.w600 : FontWeight.w400,
                         ),
                       ),
                     ],

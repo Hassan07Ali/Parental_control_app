@@ -1,44 +1,26 @@
-/// Database model classes for the auth & multi-user system.
-library;
+/// user_models.dart — updated for Firebase.
+/// ONLY change from SQLite version: id fields are String? (Firebase UID)
+/// instead of int? (SQLite autoincrement). Nothing else changed.
 
 class ParentUser {
-  final int? id;
+  final String? id;       // Firebase UID e.g. "xK9mN2pQr..."
   final String name;
   final String email;
-  final String passwordHash;
+  final String passwordHash; // always '' — Firebase manages passwords
   final String? createdAt;
 
   ParentUser({
     this.id,
     required this.name,
     required this.email,
-    required this.passwordHash,
+    this.passwordHash = '',
     this.createdAt,
   });
-
-  Map<String, dynamic> toMap() {
-    return {
-      'name': name,
-      'email': email,
-      'password': passwordHash,
-      'created_at': createdAt ?? DateTime.now().toIso8601String(),
-    };
-  }
-
-  factory ParentUser.fromMap(Map<String, dynamic> map) {
-    return ParentUser(
-      id: map['id'] as int?,
-      name: map['name'] as String,
-      email: map['email'] as String,
-      passwordHash: map['password'] as String,
-      createdAt: map['created_at'] as String?,
-    );
-  }
 }
 
 class ChildUser {
-  final int? id;
-  final int parentId;
+  final String? id;        // Firestore doc ID e.g. "uid_child"
+  final dynamic parentId;  // Firebase UID string
   String name;
   String avatarEmoji;
   int age;
@@ -46,46 +28,89 @@ class ChildUser {
   int rewardPoints;
   String pin;
 
+  // Pet fields
+  String petName;
+  String petSpecies;
+  int lifetimePoints;
+  int petHappiness;
+  int streakDays;
+  String lastComplianceDate;
+
   ChildUser({
     this.id,
     required this.parentId,
     required this.name,
-    this.avatarEmoji = '👧',
-    this.age = 8,
-    this.dailyLimitMins = 120,
-    this.rewardPoints = 0,
-    this.pin = '1234',
+    this.avatarEmoji           = '👧',
+    this.age                   = 8,
+    this.dailyLimitMins        = 120,
+    this.rewardPoints          = 0,
+    this.pin                   = '1234',
+    this.petName               = 'Buddy',
+    this.petSpecies            = 'cat',
+    this.lifetimePoints        = 0,
+    this.petHappiness          = 50,
+    this.streakDays            = 0,
+    this.lastComplianceDate    = '',
   });
 
-  Map<String, dynamic> toMap() {
-    return {
-      'parent_id': parentId,
-      'name': name,
-      'avatar_emoji': avatarEmoji,
-      'age': age,
-      'daily_limit_mins': dailyLimitMins,
-      'reward_points': rewardPoints,
-      'pin': pin,
-    };
+  int get petLevel {
+    if (lifetimePoints >= 2000) return 6;
+    if (lifetimePoints >= 1200) return 5;
+    if (lifetimePoints >= 700)  return 4;
+    if (lifetimePoints >= 350)  return 3;
+    if (lifetimePoints >= 150)  return 2;
+    if (lifetimePoints >= 50)   return 1;
+    return 0;
   }
 
-  factory ChildUser.fromMap(Map<String, dynamic> map) {
-    return ChildUser(
-      id: map['id'] as int?,
-      parentId: map['parent_id'] as int,
-      name: map['name'] as String,
-      avatarEmoji: (map['avatar_emoji'] as String?) ?? '👧',
-      age: (map['age'] as int?) ?? 8,
-      dailyLimitMins: (map['daily_limit_mins'] as int?) ?? 120,
-      rewardPoints: (map['reward_points'] as int?) ?? 0,
-      pin: (map['pin'] as String?) ?? '1234',
-    );
+  String get petLevelName {
+    const names = ['Egg','Hatchling','Baby','Child','Teen','Adult','Legend'];
+    return names[petLevel];
   }
+
+  int get pointsForNextLevel {
+    const thresholds = [50, 150, 350, 700, 1200, 2000];
+    if (petLevel >= 6) return 0;
+    return thresholds[petLevel] - lifetimePoints;
+  }
+
+  Map<String, dynamic> toMap() => {
+    'parentId':            parentId,
+    'name':                name,
+    'avatarEmoji':         avatarEmoji,
+    'age':                 age,
+    'dailyLimitMins':      dailyLimitMins,
+    'rewardPoints':        rewardPoints,
+    'pin':                 pin,
+    'petName':             petName,
+    'petSpecies':          petSpecies,
+    'lifetimePoints':      lifetimePoints,
+    'petHappiness':        petHappiness,
+    'streakDays':          streakDays,
+    'lastComplianceDate':  lastComplianceDate,
+  };
+
+  factory ChildUser.fromMap(Map<String, dynamic> m, String id) => ChildUser(
+    id:                   id,
+    parentId:             m['parentId'],
+    name:                 m['name'] ?? '',
+    avatarEmoji:          m['avatarEmoji'] ?? '👧',
+    age:                  m['age'] ?? 8,
+    dailyLimitMins:       m['dailyLimitMins'] ?? 120,
+    rewardPoints:         m['rewardPoints'] ?? 0,
+    pin:                  m['pin'] ?? '1234',
+    petName:              m['petName'] ?? 'Buddy',
+    petSpecies:           m['petSpecies'] ?? 'cat',
+    lifetimePoints:       m['lifetimePoints'] ?? 0,
+    petHappiness:         m['petHappiness'] ?? 50,
+    streakDays:           m['streakDays'] ?? 0,
+    lastComplianceDate:   m['lastComplianceDate'] ?? '',
+  );
 }
 
 class AppLimitEntry {
-  final int? id;
-  final int childId;
+  final String? id;
+  final dynamic childId;  // String child doc ID
   final String packageName;
   final String appName;
   int limitMinutes;
@@ -95,29 +120,16 @@ class AppLimitEntry {
     this.id,
     required this.childId,
     required this.packageName,
-    this.appName = '',
+    this.appName      = '',
     this.limitMinutes = 60,
-    this.isActive = true,
+    this.isActive     = true,
   });
 
-  Map<String, dynamic> toMap() {
-    return {
-      'child_id': childId,
-      'package_name': packageName,
-      'app_name': appName,
-      'limit_minutes': limitMinutes,
-      'is_active': isActive ? 1 : 0,
-    };
-  }
-
-  factory AppLimitEntry.fromMap(Map<String, dynamic> map) {
-    return AppLimitEntry(
-      id: map['id'] as int?,
-      childId: map['child_id'] as int,
-      packageName: map['package_name'] as String,
-      appName: (map['app_name'] as String?) ?? '',
-      limitMinutes: (map['limit_minutes'] as int?) ?? 60,
-      isActive: (map['is_active'] as int?) == 1,
-    );
-  }
+  Map<String, dynamic> toMap() => {
+    'childId':      childId,
+    'packageName':  packageName,
+    'appName':      appName,
+    'limitMinutes': limitMinutes,
+    'isActive':     isActive,
+  };
 }

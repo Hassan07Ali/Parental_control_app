@@ -5,10 +5,10 @@ import '../models/app_models.dart';
 import '../models/user_models.dart';
 import '../database/db_helper.dart';
 import '../services/session_service.dart';
-import 'parent_shell.dart';
+import 'main_shell.dart';
 
 class SetupScreen extends StatefulWidget {
-  final int parentId;
+  final dynamic parentId;
   const SetupScreen({super.key, required this.parentId});
 
   @override
@@ -79,8 +79,7 @@ class _SetupScreenState extends State<SetupScreen> {
         final childName = _childNameController.text.isNotEmpty ? _childNameController.text : 'Emma';
         final childAge = int.tryParse(_childAgeController.text) ?? 8;
 
-        // FIX 2.1: Hash the PIN before storing (consistent with db_helper)
-        final hashedPin = DbHelper.hashPassword(pinStr.isNotEmpty ? pinStr : '1234');
+        // Insert child into DB
         final childUser = ChildUser(
           parentId: widget.parentId,
           name: childName,
@@ -88,7 +87,7 @@ class _SetupScreenState extends State<SetupScreen> {
           age: childAge,
           dailyLimitMins: totalGlobalLimitMinutes,
           rewardPoints: 0,
-          pin: hashedPin,
+          pin: pinStr.isNotEmpty ? pinStr : '1234',
         );
         final childId = await DbHelper().insertChild(childUser);
 
@@ -96,16 +95,16 @@ class _SetupScreenState extends State<SetupScreen> {
         await SessionService.saveActiveChild(childId);
 
         // Sync to in-memory SampleData for immediate use
-        SampleData.activeChild.name = childName;
-        SampleData.activeChild.age = childAge;
-        SampleData.activeChild.avatarEmoji = _selectedChildEmoji;
-        SampleData.activeChild.dailyLimitMinutes = totalGlobalLimitMinutes;
-        SampleData.activeChild.usedMinutes = 0;
-        SampleData.activeChild.rewardPoints = 0;
+        SampleData.children[0].name = childName;
+        SampleData.children[0].age = childAge;
+        SampleData.children[0].avatarEmoji = _selectedChildEmoji;
+        SampleData.children[0].dailyLimitMinutes = totalGlobalLimitMinutes;
+        SampleData.children[0].usedMinutes = 0;
+        SampleData.children[0].rewardPoints = 0;
 
         Navigator.of(context).pushAndRemoveUntil(
           PageRouteBuilder(
-            pageBuilder: (_, __, ___) => const ParentShell(),
+            pageBuilder: (_, __, ___) => const MainShell(),
             transitionsBuilder: (_, anim, __, child) =>
                 FadeTransition(opacity: anim, child: child),
             transitionDuration: const Duration(milliseconds: 400),
@@ -273,7 +272,7 @@ class _SetupScreenState extends State<SetupScreen> {
                     children: [
                       Text('$_dailyLimitHours', style: const TextStyle(fontSize: 72, fontWeight: FontWeight.w800, color: AppTheme.accentCyan, fontFamily: 'Poppins')),
                       const Padding(padding: EdgeInsets.only(bottom: 12), child: Text(' hr  ', style: TextStyle(color: AppTheme.textSecondary, fontSize: 20))),
-                      Text(_dailyLimitMinutes.toString().padLeft(2, '0'), style: const TextStyle(fontSize: 72, fontWeight: FontWeight.w800, color: AppTheme.accentCyan, fontFamily: 'Poppins')),
+                      Text('${_dailyLimitMinutes.toString().padLeft(2, '0')}', style: const TextStyle(fontSize: 72, fontWeight: FontWeight.w800, color: AppTheme.accentCyan, fontFamily: 'Poppins')),
                       const Padding(padding: EdgeInsets.only(bottom: 12), child: Text(' min', style: TextStyle(color: AppTheme.textSecondary, fontSize: 20))),
                     ],
                   ),

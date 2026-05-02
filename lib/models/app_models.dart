@@ -250,9 +250,7 @@ class SampleData {
     ),
   ];
 
-  /// FIX 1.2: Safe accessor for the active child.
-  /// Returns children[0] if available, or a safe default fallback.
-  /// Prevents RangeError crashes throughout the app.
+  
   static ChildProfile get activeChild {
     if (children.isNotEmpty) return children[0];
     return _fallbackChild;

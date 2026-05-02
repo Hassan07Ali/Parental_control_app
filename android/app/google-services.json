@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "946155191097",
+    "project_id": "safescreen-9300f",
+    "storage_bucket": "safescreen-9300f.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:946155191097:android:8eeff3f8514486dd1886e8",
+        "android_client_info": {
+          "package_name": "com.example.safescreen"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAcUX_zSrz11RbxPaGf8HQGoV1OaovIvzc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

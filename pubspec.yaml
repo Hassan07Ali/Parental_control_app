@@ -1,5 +1,5 @@
 name: safescreen
-description: SmartScreen – Smart Parental Control
+description: SafeScreen – Smart Parental Control
 publish_to: 'none'
 version: 2.0.0+1
 
@@ -14,30 +14,19 @@ dependencies:
   fl_chart: ^0.70.0
   shared_preferences: ^2.2.0
   geolocator: ^13.0.0
-  sqflite: ^2.3.0
-  sqflite_common_ffi: ^2.3.0
-  path: ^1.9.0
-  crypto: ^3.0.3
-  sqflite_common_ffi_web: ^1.1.1
+
+  # Firebase — replaces sqflite + path + crypto completely
+  firebase_core: ^3.1.0
+  firebase_auth: ^5.1.0
+  cloud_firestore: ^5.1.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  integration_test:       
+    sdk: flutter
+  
   flutter_lints: ^3.0.0
 
 flutter:
   uses-material-design: true
-
-  # Add Poppins font - download from Google Fonts and place in assets/fonts/
-  # fonts:
-  #   - family: Poppins
-  #     fonts:
-  #       - asset: assets/fonts/Poppins-Regular.ttf
-  #       - asset: assets/fonts/Poppins-Medium.ttf
-  #         weight: 500
-  #       - asset: assets/fonts/Poppins-SemiBold.ttf
-  #         weight: 600
-  #       - asset: assets/fonts/Poppins-Bold.ttf
-  #         weight: 700
-  #       - asset: assets/fonts/Poppins-ExtraBold.ttf
-  #         weight: 800

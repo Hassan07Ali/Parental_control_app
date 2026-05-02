@@ -118,7 +118,7 @@ class MainActivity : FlutterActivity() {
                                 }.timeInMillis
                             }
 
-                            // queryEvents — accurate per-ms, no MIUI bucket bleed
+                            // queryEvents — accurate per-ms
                             val totalMs = calcUsageMs(usm, null,
                                 dayStart.timeInMillis, dayEndMs)
 

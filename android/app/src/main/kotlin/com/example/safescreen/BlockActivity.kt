@@ -62,7 +62,7 @@ class BlockActivity : ComponentActivity() {
         setContentView(layout)
 
         // Register receiver to close this screen when service says so
-        // FIX 1.3: On Android 14+ (API 34), registerReceiver without an
+        //  On Android 14+ (API 34), registerReceiver without an
         // export flag throws SecurityException. Use RECEIVER_NOT_EXPORTED
         // since this is an internal broadcast.
         val filter = IntentFilter("com.example.safescreen.ACTION_CLOSE_BLOCK_SCREEN")

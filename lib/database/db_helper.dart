@@ -1,298 +1,295 @@
-import 'dart:convert';
-import 'package:crypto/crypto.dart';
-import 'package:sqflite/sqflite.dart';
-import 'package:path/path.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/user_models.dart';
 
-/// Central SQLite database helper — handles all CRUD operations for auth & data.
 class DbHelper {
   static final DbHelper _instance = DbHelper._internal();
   factory DbHelper() => _instance;
   DbHelper._internal();
 
-  static Database? _db;
-  static bool _isInitializing = false;
+  final _auth = FirebaseAuth.instance;
+  final _db   = FirebaseFirestore.instance;
 
-  Future<Database> get database async {
-    if (_db != null) return _db!;
-    
-    // Wait if initialization is already in progress
-    while (_isInitializing) {
-      await Future.delayed(const Duration(milliseconds: 50));
-      if (_db != null) return _db!;
-    }
-    
-    _isInitializing = true;
-    try {
-      _db = await _initDatabase();
-    } finally {
-      _isInitializing = false;
-    }
-    return _db!;
-  }
+  String _childDocId(String uid) => '${uid}_child';
 
-  Future<Database> _initDatabase() async {
-    final dbPath = await getDatabasesPath();
-    final path = join(dbPath, 'safescreen.db');
+  // ── hashPassword — compatibility stub ─────────────────────────────────────
+  // Firebase Auth handles password security. PINs stored as plain text.
+  
+  static String hashPassword(String input) => input;
 
-    return await openDatabase(
-      path,
-      version: 1,
-      onCreate: _createTables,
-      onOpen: (db) async { await db.execute('PRAGMA foreign_keys = ON'); },
-    );
-  }
+  // ── Auth ───────────────────────────────────────────────────────────────────
 
-  Future<void> _createTables(Database db, int version) async {
-    await db.execute('''
-      CREATE TABLE parents (
-        id          INTEGER PRIMARY KEY AUTOINCREMENT,
-        name        TEXT    NOT NULL,
-        email       TEXT    UNIQUE NOT NULL,
-        password    TEXT    NOT NULL,
-        created_at  TEXT
-      )
-    ''');
-
-    await db.execute('''
-      CREATE TABLE children (
-        id                INTEGER PRIMARY KEY AUTOINCREMENT,
-        parent_id         INTEGER NOT NULL,
-        name              TEXT    NOT NULL,
-        avatar_emoji      TEXT    DEFAULT '👧',
-        age               INTEGER DEFAULT 8,
-        daily_limit_mins  INTEGER DEFAULT 120,
-        reward_points     INTEGER DEFAULT 0,
-        pin               TEXT    DEFAULT '1234',
-        FOREIGN KEY (parent_id) REFERENCES parents(id) ON DELETE CASCADE
-      )
-    ''');
-
-    await db.execute('''
-      CREATE TABLE app_limits (
-        id            INTEGER PRIMARY KEY AUTOINCREMENT,
-        child_id      INTEGER NOT NULL,
-        package_name  TEXT    NOT NULL,
-        app_name      TEXT    DEFAULT '',
-        limit_minutes INTEGER DEFAULT 60,
-        is_active     INTEGER DEFAULT 1,
-        FOREIGN KEY (child_id) REFERENCES children(id) ON DELETE CASCADE
-      )
-    ''');
-  }
-
-  // ─── Password Hashing ─────────────────────────────────────────────────────
-  static String hashPassword(String password) {
-    final bytes = utf8.encode(password);
-    return sha256.convert(bytes).toString();
-  }
-
-  // ─── Parent CRUD ──────────────────────────────────────────────────────────
-
-  /// Register a new parent. Returns the new parent's ID.
   Future<int> registerParent(String name, String email, String password) async {
-    final db = await database;
-    return await db.insert('parents', {
-      'name': name,
-      'email': email.toLowerCase().trim(),
-      'password': hashPassword(password),
-      'created_at': DateTime.now().toIso8601String(),
+    final cred = await _auth.createUserWithEmailAndPassword(
+        email: email.trim().toLowerCase(), password: password);
+    final uid = cred.user!.uid;
+    await _db.collection('parents').doc(uid).set({
+      'name':      name.trim(),
+      'email':     email.trim().toLowerCase(),
+      'createdAt': DateTime.now().toIso8601String(),
+      'role':      'parent',
     });
+    return uid.hashCode;
   }
 
-  /// Login: returns the ParentUser if credentials match, null otherwise.
   Future<ParentUser?> loginParent(String email, String password) async {
-    final db = await database;
-    final results = await db.query(
-      'parents',
-      where: 'email = ? AND password = ?',
-      whereArgs: [email.toLowerCase().trim(), hashPassword(password)],
-    );
-    if (results.isEmpty) return null;
-    return ParentUser.fromMap(results.first);
+    try {
+      final cred = await _auth.signInWithEmailAndPassword(
+          email: email.trim().toLowerCase(), password: password);
+      final uid = cred.user!.uid;
+      final doc = await _db.collection('parents').doc(uid).get();
+      if (!doc.exists) return null;
+      return ParentUser(id: uid, name: doc['name'], email: doc['email']);
+    } on FirebaseAuthException {
+      return null;
+    }
   }
 
-  /// Check if email is already registered.
   Future<bool> emailExists(String email) async {
-    final db = await database;
-    final results = await db.query(
-      'parents',
-      where: 'email = ?',
-      whereArgs: [email.toLowerCase().trim()],
-    );
-    return results.isNotEmpty;
+    final methods = await _auth.fetchSignInMethodsForEmail(
+        email.trim().toLowerCase());
+    return methods.isNotEmpty;
   }
 
-  /// Get parent by ID.
-  Future<ParentUser?> getParentById(int id) async {
-    final db = await database;
-    final results = await db.query('parents', where: 'id = ?', whereArgs: [id]);
-    if (results.isEmpty) return null;
-    return ParentUser.fromMap(results.first);
+  Future<ParentUser?> getParentById(dynamic id) async {
+    final uid = _resolveUid(id);
+    if (uid == null) return null;
+    final doc = await _db.collection('parents').doc(uid).get();
+    if (!doc.exists) return null;
+    return ParentUser(id: uid, name: doc['name'], email: doc['email']);
   }
 
-  // ─── Child CRUD ───────────────────────────────────────────────────────────
+  bool isLoggedIn() => _auth.currentUser != null;
+  String? getCurrentUid() => _auth.currentUser?.uid;
+  Future<void> signOut() => _auth.signOut();
 
-  /// Insert a child for a parent. Returns the child's ID.
+  // ── Children ───────────────────────────────────────────────────────────────
+
   Future<int> insertChild(ChildUser child) async {
-    final db = await database;
-    return await db.insert('children', child.toMap());
-  }
-
-  /// Get all children for a parent.
-  Future<List<ChildUser>> getChildrenForParent(int parentId) async {
-    final db = await database;
-    final results = await db.query(
-      'children',
-      where: 'parent_id = ?',
-      whereArgs: [parentId],
-    );
-    return results.map((m) => ChildUser.fromMap(m)).toList();
-  }
-
-  /// Get a single child by ID.
-  Future<ChildUser?> getChildById(int childId) async {
-    final db = await database;
-    final results = await db.query('children', where: 'id = ?', whereArgs: [childId]);
-    if (results.isEmpty) return null;
-    return ChildUser.fromMap(results.first);
-  }
-
-  /// Update a child's reward points.
-  Future<void> updateRewardPoints(int childId, int points) async {
-    final db = await database;
-    await db.update(
-      'children',
-      {'reward_points': points},
-      where: 'id = ?',
-      whereArgs: [childId],
-    );
-  }
-
-  /// Update a child's daily limit.
-  Future<void> updateDailyLimit(int childId, int limitMins) async {
-    final db = await database;
-    await db.update(
-      'children',
-      {'daily_limit_mins': limitMins},
-      where: 'id = ?',
-      whereArgs: [childId],
-    );
-  }
-
-  // ─── App Limits CRUD ──────────────────────────────────────────────────────
-
-  /// Save or update app limits for a child.
-  /// Replaces all existing limits with the new ones.
-  Future<void> saveAppLimits(int childId, List<AppLimitEntry> limits) async {
-    final db = await database;
-    await db.transaction((txn) async {
-      // Clear existing limits for this child
-      await txn.delete('app_limits', where: 'child_id = ?', whereArgs: [childId]);
-      // Insert all new limits
-      for (final limit in limits) {
-        await txn.insert('app_limits', limit.toMap());
-      }
+    final uid     = _auth.currentUser!.uid;
+    final childId = _childDocId(uid);
+    await _db.collection('children').doc(childId).set({
+      ...child.toMap(),
+      'parentId': uid,
     });
+    return childId.hashCode;
   }
 
-  /// Get all active app limits for a child.
-  Future<List<AppLimitEntry>> getAppLimits(int childId) async {
-    final db = await database;
-    final results = await db.query(
-      'app_limits',
-      where: 'child_id = ?',
-      whereArgs: [childId],
-    );
-    return results.map((m) => AppLimitEntry.fromMap(m)).toList();
+  Future<List<ChildUser>> getChildrenForParent(dynamic parentId) async {
+    final uid     = _resolveUid(parentId) ?? _auth.currentUser?.uid;
+    if (uid == null) return [];
+    final childId = _childDocId(uid);
+    final doc     = await _db.collection('children').doc(childId).get();
+    if (!doc.exists) return [];
+    return [ChildUser.fromMap(doc.data()!, childId)];
   }
 
-  // ─── Parent Profile Updates ───────────────────────────────────────────────
-
-  /// Update parent display name.
-  Future<void> updateParentName(int parentId, String newName) async {
-    final db = await database;
-    await db.update('parents', {'name': newName.trim()},
-        where: 'id = ?', whereArgs: [parentId]);
+  Future<ChildUser?> getChildById(dynamic childId) async {
+    final id  = _resolveChildId(childId);
+    if (id == null) return null;
+    final doc = await _db.collection('children').doc(id).get();
+    if (!doc.exists) return null;
+    return ChildUser.fromMap(doc.data()!, id);
   }
 
-  /// Update parent email — checks for duplicates first.
-  /// Returns true on success, false if email already taken.
-  Future<bool> updateParentEmail(int parentId, String newEmail) async {
-    final db = await database;
-    final norm = newEmail.toLowerCase().trim();
-    final existing = await db.query('parents',
-        where: 'email = ? AND id != ?', whereArgs: [norm, parentId]);
-    if (existing.isNotEmpty) return false;
-    await db.update('parents', {'email': norm},
-        where: 'id = ?', whereArgs: [parentId]);
-    return true;
-  }
-
-  /// Update parent password — verifies old password first.
-  /// Returns true on success, false if old password is wrong.
-  Future<bool> updateParentPassword(
-      int parentId, String oldPassword, String newPassword) async {
-    final db = await database;
-    final check = await db.query('parents',
-        where: 'id = ? AND password = ?',
-        whereArgs: [parentId, hashPassword(oldPassword)]);
-    if (check.isEmpty) return false;
-    await db.update('parents', {'password': hashPassword(newPassword)},
-        where: 'id = ?', whereArgs: [parentId]);
-    return true;
-  }
-
-  // ─── Child Profile Updates ────────────────────────────────────────────────
-
-  /// Update child name, avatar, and age together.
-  Future<void> updateChildProfile(
-      int childId, String name, String avatarEmoji, int age) async {
-    final db = await database;
-    await db.update(
-      'children',
-      {'name': name.trim(), 'avatar_emoji': avatarEmoji, 'age': age},
-      where: 'id = ?',
-      whereArgs: [childId],
-    );
-  }
-
-  /// Update the child-facing PIN.
-  /// FIX 2.1: Hash the PIN before storing (same SHA-256 as parent passwords).
-  Future<void> updateChildPin(int childId, String newPin) async {
-    final db = await database;
-    await db.update('children', {'pin': hashPassword(newPin)},
-        where: 'id = ?', whereArgs: [childId]);
-  }
-
-  /// Get a child's current PIN hash (for verification before changing).
-  /// FIX 2.1: Returns the stored hash, not plain text.
-  Future<String?> getChildPin(int childId) async {
-    final db = await database;
-    final results = await db.query('children',
-        columns: ['pin'], where: 'id = ?', whereArgs: [childId]);
-    if (results.isEmpty) return null;
-    return results.first['pin'] as String?;
-  }
-
-  /// Get ALL children across all parents (used on the child selector screen).
   Future<List<ChildUser>> getAllChildren() async {
-    final db = await database;
-    final results = await db.query('children', orderBy: 'name ASC');
-    return results.map((m) => ChildUser.fromMap(m)).toList();
+    final snap = await _db.collection('children').get();
+    return snap.docs.map((d) => ChildUser.fromMap(d.data(), d.id)).toList();
   }
 
-  /// Verify a child's PIN. Returns the ChildUser on success, null on failure.
-  /// FIX 2.1: Hash the input PIN before comparing against the stored hash.
-  Future<ChildUser?> loginChildByPin(int childId, String pin) async {
-    final db = await database;
-    final results = await db.query(
-      'children',
-      where: 'id = ? AND pin = ?',
-      whereArgs: [childId, hashPassword(pin)],
-    );
-    if (results.isEmpty) return null;
-    return ChildUser.fromMap(results.first);
+  // ── Child updates ──────────────────────────────────────────────────────────
+
+  Future<void> updateRewardPoints(dynamic childId, int points) async {
+    final id = _resolveChildId(childId)!;
+    await _db.collection('children').doc(id).update({'rewardPoints': points});
   }
 
+  Future<void> updateDailyLimit(dynamic childId, int limitMins) async {
+    final id = _resolveChildId(childId)!;
+    await _db.collection('children').doc(id).update({'dailyLimitMins': limitMins});
+  }
+
+  Future<void> updateChildProfile(
+      dynamic childId, String name, String avatarEmoji, int age) async {
+    final id = _resolveChildId(childId)!;
+    await _db.collection('children').doc(id)
+        .update({'name': name, 'avatarEmoji': avatarEmoji, 'age': age});
+  }
+
+  Future<void> updateChildPin(dynamic childId, String newPin) async {
+    final id = _resolveChildId(childId)!;
+    await _db.collection('children').doc(id).update({'pin': newPin});
+  }
+
+  Future<String?> getChildPin(dynamic childId) async {
+    final id  = _resolveChildId(childId)!;
+    final doc = await _db.collection('children').doc(id).get();
+    return doc.exists ? doc['pin'] as String? : null;
+  }
+
+  Future<ChildUser?> loginChildByPin(dynamic childId, String pin) async {
+    final id  = _resolveChildId(childId)!;
+    final doc = await _db.collection('children').doc(id).get();
+    if (!doc.exists) return null;
+    if (doc['pin'] != pin) return null;
+    return ChildUser.fromMap(doc.data()!, id);
+  }
+
+  // ── Parent updates ─────────────────────────────────────────────────────────
+
+  Future<void> updateParentName(dynamic parentId, String newName) async {
+    final uid = _resolveUid(parentId) ?? _auth.currentUser?.uid;
+    if (uid == null) return;
+    await _db.collection('parents').doc(uid).update({'name': newName});
+  }
+
+  Future<bool> updateParentEmail(dynamic parentId, String newEmail) async {
+    try {
+      await _auth.currentUser!
+          .verifyBeforeUpdateEmail(newEmail.trim().toLowerCase());
+      final uid = _resolveUid(parentId) ?? _auth.currentUser?.uid;
+      if (uid != null) {
+        await _db.collection('parents').doc(uid)
+            .update({'email': newEmail.trim().toLowerCase()});
+      }
+      return true;
+    } catch (_) { return false; }
+  }
+
+  Future<bool> updateParentPassword(
+      dynamic parentId, String oldPassword, String newPassword) async {
+    try {
+      final user = _auth.currentUser!;
+      final cred = EmailAuthProvider.credential(
+          email: user.email!, password: oldPassword);
+      await user.reauthenticateWithCredential(cred);
+      await user.updatePassword(newPassword);
+      return true;
+    } catch (_) { return false; }
+  }
+
+  // ── App Limits ─────────────────────────────────────────────────────────────
+
+  Future<void> saveAppLimits(
+      dynamic childId, List<AppLimitEntry> limits) async {
+    final id    = _resolveChildId(childId)!;
+    final batch = _db.batch();
+    final col   = _db.collection('app_limits').doc(id).collection('limits');
+    final old   = await col.get();
+    for (final doc in old.docs) batch.delete(doc.reference);
+    for (final limit in limits) {
+      final key = limit.packageName.replaceAll('.', '_');
+      batch.set(col.doc(key), {
+        'packageName':  limit.packageName,
+        'appName':      limit.appName,
+        'limitMinutes': limit.limitMinutes,
+        'isActive':     limit.isActive,
+        'childId':      id,
+      });
+    }
+    await batch.commit();
+  }
+
+  Future<List<AppLimitEntry>> getAppLimits(dynamic childId) async {
+    final id   = _resolveChildId(childId)!;
+    final snap = await _db
+        .collection('app_limits').doc(id).collection('limits')
+        .where('isActive', isEqualTo: true)
+        .get();
+    return snap.docs.map((doc) => AppLimitEntry(
+      childId:      id,
+      packageName:  doc['packageName'],
+      appName:      doc['appName'] ?? '',
+      limitMinutes: doc['limitMinutes'] ?? 60,
+      isActive:     doc['isActive'] ?? true,
+    )).toList();
+  }
+
+  // ── Pet methods ────────────────────────────────────────────────────────────
+
+  Future<void> updatePet(dynamic childId, String petName, String petSpecies) async {
+    final id = _resolveChildId(childId)!;
+    await _db.collection('children').doc(id)
+        .update({'petName': petName, 'petSpecies': petSpecies});
+  }
+
+  Future<void> updatePetHappiness(dynamic childId, int happiness) async {
+    final id = _resolveChildId(childId)!;
+    await _db.collection('children').doc(id)
+        .update({'petHappiness': happiness.clamp(0, 100)});
+  }
+
+  Future<void> updateStreak(dynamic childId, int streakDays, String date) async {
+    final id = _resolveChildId(childId)!;
+    await _db.collection('children').doc(id)
+        .update({'streakDays': streakDays, 'lastComplianceDate': date});
+  }
+
+  Future<Map<String, dynamic>> checkAndAwardDailyPoints(
+    dynamic childId, int usedMinutes, int limitMinutes,
+    int eduMinutes, String today,
+  ) async {
+    final id  = _resolveChildId(childId)!;
+    final doc = await _db.collection('children').doc(id).get();
+    if (!doc.exists) return {'awarded': 0, 'message': ''};
+
+    final data     = doc.data()!;
+    final lastDate = (data['lastComplianceDate'] as String?) ?? '';
+    if (lastDate == today) return {'awarded': 0, 'message': ''};
+
+    if (usedMinutes > limitMinutes || limitMinutes == 0) {
+      final happiness = ((data['petHappiness'] as int?) ?? 50) - 15;
+      await _db.collection('children').doc(id).update({
+        'streakDays':          0,
+        'petHappiness':        happiness.clamp(0, 100),
+        'lastComplianceDate':  today,
+      });
+      return {'awarded': 0, 'message': 'Limit exceeded'};
+    }
+
+    int    points  = 10;
+    String message = '+10 pts';
+    if (usedMinutes <= limitMinutes * 0.5) { points += 10; message += ', +10 restraint'; }
+    final eduBonus = (eduMinutes ~/ 15) * 5;
+    if (eduBonus > 0) { points += eduBonus; message += ', +$eduBonus edu'; }
+    int streak = ((data['streakDays'] as int?) ?? 0) + 1;
+    if (streak == 3)  { points += 15; }
+    if (streak == 7)  { points += 50; }
+    if (streak == 14) { points += 120; }
+    points = points.clamp(0, 100);
+
+    final newReward   = ((data['rewardPoints']   as int?) ?? 0) + points;
+    final newLifetime = ((data['lifetimePoints'] as int?) ?? 0) + points;
+    final happiness   = ((data['petHappiness']   as int?) ?? 50) + 20;
+
+    await _db.collection('children').doc(id).update({
+      'rewardPoints':        newReward,
+      'lifetimePoints':      newLifetime,
+      'petHappiness':        happiness.clamp(0, 100),
+      'streakDays':          streak,
+      'lastComplianceDate':  today,
+    });
+    return {'awarded': points, 'message': message};
+  }
+
+  Future<void> migratePetColumns() async {}
+
+  // ── ID resolution helpers ──────────────────────────────────────────────────
+
+  String? _resolveUid(dynamic id) {
+    if (id == null) return _auth.currentUser?.uid;
+    if (id is String) return id;
+    return _auth.currentUser?.uid;
+  }
+
+  String? _resolveChildId(dynamic id) {
+    if (id == null) {
+      final uid = _auth.currentUser?.uid;
+      return uid != null ? _childDocId(uid) : null;
+    }
+    if (id is String && id.contains('_child')) return id;
+    if (id is String) return _childDocId(id);
+    final uid = _auth.currentUser?.uid;
+    return uid != null ? _childDocId(uid) : null;
+  }
 }
