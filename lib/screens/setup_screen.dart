@@ -9,7 +9,8 @@ import 'parent_shell.dart';
 
 class SetupScreen extends StatefulWidget {
   final int parentId;
-  const SetupScreen({super.key, required this.parentId});
+  final bool isAddingChild;
+  const SetupScreen({super.key, required this.parentId, this.isAddingChild = false});
 
   @override
   State<SetupScreen> createState() => _SetupScreenState();
@@ -147,6 +148,19 @@ class _SetupScreenState extends State<SetupScreen> {
                             border: Border.all(color: AppTheme.borderColor),
                           ),
                           child: const Icon(Icons.arrow_back_ios_new, size: 16, color: AppTheme.textPrimary),
+                        ),
+                      )
+                    else if (widget.isAddingChild)
+                      GestureDetector(
+                        onTap: () => Navigator.pop(context),
+                        child: Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(12),
+                            color: AppTheme.surfaceMid,
+                            border: Border.all(color: AppTheme.borderColor),
+                          ),
+                          child: const Icon(Icons.close, size: 16, color: AppTheme.textPrimary),
                         ),
                       ),
                     const Spacer(),

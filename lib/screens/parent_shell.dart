@@ -57,7 +57,13 @@ class _ParentShellState extends State<ParentShell> {
     // Load children
     final children = await DbHelper().getChildrenForParent(parentId);
     if (children.isNotEmpty) {
-      final child = children.first;
+      final activeChildId = await SessionService.getActiveChildId();
+      ChildUser? child;
+      if (activeChildId != null) {
+        try { child = children.firstWhere((c) => c.id == activeChildId); } catch (_) {}
+      }
+      child ??= children.first;
+
       await SessionService.saveActiveChild(child.id!);
 
       SampleData.children[0].name = child.name;

@@ -49,6 +49,11 @@ class _SignupScreenState extends State<SignupScreen> {
       return;
     }
 
+    if (!email.toLowerCase().endsWith('@gmail.com')) {
+      setState(() => _errorMessage = 'Only @gmail.com email addresses are allowed.');
+      return;
+    }
+
     if (password.length < 6) {
       setState(() => _errorMessage = 'Password must be at least 6 characters.');
       return;
@@ -155,7 +160,7 @@ class _SignupScreenState extends State<SignupScreen> {
                 const SizedBox(height: 8),
                 _buildField(
                   controller: _emailController,
-                  hint: 'you@example.com',
+                  hint: 'you@gmail.com',
                   icon: Icons.email_outlined,
                   keyboardType: TextInputType.emailAddress,
                 ),

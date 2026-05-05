@@ -59,6 +59,19 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _fetchBatchTimes() async {
+    final isParent = await SessionService.isParentLoggedIn();
+    if (isParent) {
+      if (mounted) {
+        setState(() {
+          SampleData.children[0].usedMinutes = 45; // Mock data for parent view
+          for (final app in SampleData.recentApps) {
+            app.minutesUsed = (app.limitMinutes * 0.4).toInt();
+          }
+        });
+      }
+      return;
+    }
+
     // 1. Total device screen time — FIX: pass startTime so Android side
     //    queries only from today's midnight, not from an undefined point.
     try {
@@ -106,6 +119,20 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _fetchCategorizedUsage() async {
+    final isParent = await SessionService.isParentLoggedIn();
+    if (isParent) {
+      if (mounted) {
+        setState(() {
+          _categoryBreakdown = {
+            AppCategory.education: 20,
+            AppCategory.gaming: 15,
+            AppCategory.socialMedia: 10,
+          };
+        });
+      }
+      return;
+    }
+
     try {
       final result = await platform.invokeMethod('getCategorizedUsage');
       if (result != null && mounted) {
@@ -128,6 +155,9 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _checkAndAwardDailyPoints() async {
+    final isParent = await SessionService.isParentLoggedIn();
+    if (isParent) return; // Don't award points based on mock/parent data
+
     final child   = SampleData.children[0];
     final childId = await SessionService.getActiveChildId();
     if (childId == null) return;

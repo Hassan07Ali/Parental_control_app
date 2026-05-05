@@ -6,6 +6,8 @@ import '../models/app_models.dart';
 import '../database/db_helper.dart';
 import '../services/session_service.dart';
 import 'role_picker_screen.dart';
+import 'setup_screen.dart';
+import 'parent_shell.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Settings Screen — fully wired backend
@@ -418,6 +420,57 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   // ══════════════════════════════════════════════════════════════════════════
+  // SWITCH CHILD & ADD CHILD
+  // ══════════════════════════════════════════════════════════════════════════
+  void _navigateToAddChild() async {
+    final parentId = await SessionService.getParentId();
+    if (parentId == null) return;
+    if (mounted) {
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => SetupScreen(parentId: parentId, isAddingChild: true),
+        ),
+      );
+    }
+  }
+
+  void _showSwitchChild() async {
+    final parentId = await SessionService.getParentId();
+    if (parentId == null) return;
+    final children = await DbHelper().getChildrenForParent(parentId);
+    if (children.isEmpty) return;
+
+    if (!mounted) return;
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppTheme.surfaceCard,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Switch Child', style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w700)),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: children.map((c) => ListTile(
+              leading: Text(c.avatarEmoji, style: const TextStyle(fontSize: 24)),
+              title: Text(c.name, style: const TextStyle(color: AppTheme.textPrimary)),
+              onTap: () async {
+                Navigator.pop(ctx);
+                await SessionService.saveActiveChild(c.id!);
+                if (mounted) {
+                  Navigator.of(context).pushAndRemoveUntil(
+                    MaterialPageRoute(builder: (_) => const ParentShell()),
+                    (route) => false,
+                  );
+                }
+              },
+            )).toList(),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
   // ABOUT dialog
   // ══════════════════════════════════════════════════════════════════════════
   void _showAbout() {
@@ -665,6 +718,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     _divider(),
                     _tile(Icons.child_care,       'Manage Children',  AppTheme.accentGreen,
                         onTap: _showManageChildren),
+                    _divider(),
+                    _tile(Icons.swap_horiz,       'Switch Child',     AppTheme.accentCyan,
+                        onTap: _showSwitchChild),
+                    _divider(),
+                    _tile(Icons.person_add_alt_1_outlined, 'Add New Child', AppTheme.accentPink,
+                        onTap: _navigateToAddChild),
                   ]),
                 ),
 

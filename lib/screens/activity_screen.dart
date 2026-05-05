@@ -49,6 +49,20 @@ class _ActivityScreenState extends State<ActivityScreen> {
   }
 
   Future<void> _fetchWeeklyData() async {
+    final isParent = await SessionService.isParentLoggedIn();
+    if (isParent) {
+      if (mounted) {
+        final now = DateTime.now();
+        setState(() {
+          _weeklyData = List.generate(7, (i) {
+            final date = now.subtract(Duration(days: 6 - i));
+            return DailyUsageEntry(date: date, totalMinutes: 30 + (i * 10)); // Mock trend
+          });
+        });
+      }
+      return;
+    }
+
     try {
       final result = await platform.invokeMethod('getWeeklyUsage');
       if (result != null && mounted) {
@@ -78,6 +92,20 @@ class _ActivityScreenState extends State<ActivityScreen> {
   }
 
   Future<void> _fetchCategorizedUsage() async {
+    final isParent = await SessionService.isParentLoggedIn();
+    if (isParent) {
+      if (mounted) {
+        setState(() {
+          _todayCategoryBreakdown = {
+            AppCategory.education: 20,
+            AppCategory.gaming: 15,
+            AppCategory.socialMedia: 10,
+          };
+        });
+      }
+      return;
+    }
+
     try {
       final result = await platform.invokeMethod('getCategorizedUsage');
       if (result != null && mounted) {
@@ -102,6 +130,17 @@ class _ActivityScreenState extends State<ActivityScreen> {
   /// Fetches today's total device screen time directly from Android
   /// so the "Today's Screen Time" card is always accurate.
   Future<void> _fetchTodayUsage() async {
+    final isParent = await SessionService.isParentLoggedIn();
+    if (isParent) {
+      if (mounted) {
+        setState(() {
+          _todayUsedMinutes = 45;
+          SampleData.children[0].usedMinutes = 45;
+        });
+      }
+      return;
+    }
+
     try {
       final result = await platform.invokeMethod('getDeviceTotalUsage');
       if (result != null && mounted) {
